@@ -1,5 +1,5 @@
 GREETING = 'FORCAST DRIP Grism v1.3'
-LOADDATAPATH = '.'
+LOADDATAPATH = '/home/grad58/deen/Code/IDL/FORCAST/fg_package_v1.3/DEMO_GRISM_DATA_v1.3/G3/'
 SAVEPATH = '.'
 DISPSEL_A = 'Stacked'
 DISPSEL_B = 'Merged'
