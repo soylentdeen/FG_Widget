@@ -1,0 +1,5 @@
+#This is a list of files ignored by the github tracker
+.Spectra01.ps.ps.swp
+fg_start
+._*
+.DS_Store
