@@ -1,7 +1,7 @@
 device, true_color=24
 device, decomposed=1
 device, retain=2
-!PATH= '+/Users/keller/Research/fg_widget_github/FG_Widget:+' +!dir
+!PATH= '+/home/deen/Code/IDL/FORCAST/FG_Widget:+'+!dir
 !PATH=EXPAND_PATH(!PATH,/all_dirs)
-cd,'/Users/keller/Research/fg_widget_github/FG_Widget'
+cd,'/home/deen/Code/IDL/FORCAST/FG_Widget'
 
