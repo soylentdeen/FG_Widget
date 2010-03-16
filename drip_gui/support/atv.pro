@@ -69,6 +69,10 @@
 ;       For the most current version, revision history, instructions,
 ;       list of known bugs, and further information, go to:
 ;              http://www.physics.uci.edu/~barth/atv
+;              
+;       Modified 08 March 2010 by Luke Keller
+;         Added case statement in atv main program to display first 
+;         frame of 3-D iamge cubes
 ; 
 ;-
 ;----------------------------------------------------------------------
@@ -9479,23 +9483,35 @@ endif
 if ( (n_params() NE 0) AND (size(image, /tname) NE 'STRING') AND $
    (size(image, /tname) NE 'UNDEFINED')) then begin
 ; Make sure it's a 2-d array
-    if ( ((size(image))[0] NE 2) OR $
-         ((size(image))[1] EQ 1) OR $
-         ((size(image))[2] EQ 1)  ) then begin
-        print, 'ERROR: Input data must be a 2-d array!'    
-    endif else begin
-        main_image = image
-        newimage = 1
-        state.imagename = ''
-        state.title_extras = ''
-        atv_setheader, header
-        if (state.firstimage EQ 1) then begin
+; If array is 3-D then display the first frame of the cube
+    init_array_size = size(image)   
+    CASE init_array_size[0] OF
+         1: print, 'ERROR: Input data must be at least a 2-d array!' 
+         2: begin
+          main_image = image
+          newimage = 1
+          state.imagename = ''
+          state.title_extras = ''
+          atv_setheader, header
+          if (state.firstimage EQ 1) then begin
             align = 0
             stretch = 0
-        endif
-    endelse
- endif
-
+          endif
+          end   
+         3: begin
+            print, 'WARNING: 3-D array...Displaying 0th frame only'
+            main_image = image[*,*,0]
+            newimage = 1
+            state.imagename = ''
+            state.title_extras = ''
+            atv_setheader, header
+            if (state.firstimage EQ 1) then begin
+              align = 0
+              stretch = 0
+            endif
+          end
+    endcase
+endif
 ;   Define default startup image 
 if (n_elements(main_image) LE 1) then begin
     gridsize = 512

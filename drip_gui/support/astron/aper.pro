@@ -1,4 +1,4 @@
-pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
+pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix,$
        SETSKYVAL = setskyval,PRINT = print, SILENT = silent, FLUX=flux, $
        EXACT = exact, Nan = nan, READNOISE = readnoise, MEANBACK = meanback, $
        CLIPSIG=clipsig, MAXITER=maxiter,CONVERGE_NUM=converge_num
@@ -6,25 +6,25 @@ pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
 ; NAME:
 ;      APER
 ; PURPOSE:
-;      Compute concentric aperture photometry (adapted from DAOPHOT) 
+;      Compute concentric aperture photometry (adapted from DAOPHOT)
 ; EXPLANATION:
-;     APER can compute photometry in several user-specified aperture radii.  
-;     A separate sky value is computed for each source using specified inner 
-;     and outer sky radii.   
+;     APER can compute photometry in several user-specified aperture radii.
+;     A separate sky value is computed for each source using specified inner
+;     and outer sky radii.
 ;
 ; CALLING SEQUENCE:
-;     APER, image, xc, yc, [ mags, errap, sky, skyerr, phpadu, apr, skyrad, 
-;                       badpix, /NAN, /EXACT, /FLUX, PRINT = , /SILENT, 
+;     APER, image, xc, yc, [ mags, errap, sky, skyerr, phpadu, apr, skyrad,
+;                       badpix, /NAN, /EXACT, /FLUX, PRINT = , /SILENT,
 ;                       /MEANBACK, SETSKYVAL = ]
 ; INPUTS:
 ;     IMAGE -  input image array
-;     XC     - vector of x coordinates. 
+;     XC     - vector of x coordinates.
 ;     YC     - vector of y coordinates
 ;
 ; OPTIONAL INPUTS:
 ;     PHPADU - Photons per Analog Digital Units, numeric scalar.  Converts
 ;               the data numbers in IMAGE to photon units.  (APER assumes
-;               Poisson statistics.)  
+;               Poisson statistics.)
 ;     APR    - Vector of up to 12 REAL photometry aperture radii.
 ;     SKYRAD - Two element vector giving the inner and outer radii
 ;               to be used for the sky annulus.   Ignored if the SETSKYVAL
@@ -38,33 +38,33 @@ pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
 ;               parameter is ignored if the /NAN keyword is set.
 ;
 ; OPTIONAL KEYWORD INPUTS:
-;     CLIPSIG - if /MEANBACK is set, then this is the number of sigma at which 
+;     CLIPSIG - if /MEANBACK is set, then this is the number of sigma at which
 ;             to clip the background.  Default=3
-;     CONVERGE_NUM:  if /MEANBACK is set then if the proportion of 
-;           rejected pixels is less than this fraction, the iterations stop.  
-;           Default=0.02, i.e., iteration stops if fewer than 2% of pixels 
+;     CONVERGE_NUM:  if /MEANBACK is set then if the proportion of
+;           rejected pixels is less than this fraction, the iterations stop.
+;           Default=0.02, i.e., iteration stops if fewer than 2% of pixels
 ;           excluded.
-;     /EXACT -  By default, APER counts subpixels, but uses a polygon 
+;     /EXACT -  By default, APER counts subpixels, but uses a polygon
 ;             approximation for the intersection of a circular aperture with
 ;             a square pixel (and normalizes the total area of the sum of the
-;             pixels to exactly match the circular area).   If the /EXACT 
+;             pixels to exactly match the circular area).   If the /EXACT
 ;             keyword, then the intersection of the circular aperture with a
 ;             square pixel is computed exactly.    The /EXACT keyword is much
 ;             slower and is only needed when small (~2 pixels) apertures are
-;             used with very undersampled data.    
+;             used with very undersampled data.
 ;     /FLUX - By default, APER uses a magnitude system where a magnitude of
 ;               25 corresponds to 1 flux unit.   If set, then APER will keep
-;              results in flux units instead of magnitudes.    
-;     MAXITER if /MEANBACK is set then this is the ceiling on number of 
+;              results in flux units instead of magnitudes.
+;     MAXITER if /MEANBACK is set then this is the ceiling on number of
 ;             clipping iterations of the background.  Default=5
-;     /MEANBACK - if set, then the background is computed using the 3 sigma 
-;             clipped mean (using meanclip.pro) rather than using the mode 
-;             computed with mmm.pro.    This keyword is useful for the Poisson 
+;     /MEANBACK - if set, then the background is computed using the 3 sigma
+;             clipped mean (using meanclip.pro) rather than using the mode
+;             computed with mmm.pro.    This keyword is useful for the Poisson
 ;             count regime or where contamination is known  to be minimal.
 ;     /NAN  - If set then APER will check for NAN values in the image.   /NAN
-;             takes precedence over the BADPIX parameter.   Note that fluxes 
-;             will not be computed for any star with a NAN pixel within the 
-;             aperture area, but that NAN pixels will be simply ignored for 
+;             takes precedence over the BADPIX parameter.   Note that fluxes
+;             will not be computed for any star with a NAN pixel within the
+;             aperture area, but that NAN pixels will be simply ignored for
 ;             the sky computation.
 ;     PRINT - if set and non-zero then APER will also write its results to
 ;               a file aper.prt.   One can specify the output file name by
@@ -72,14 +72,14 @@ pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
 ;     READNOISE - Scalar giving the read noise (or minimum noise for any
 ;              pixel.   This value is passed to the procedure mmm.pro when
 ;              computing the sky, and is only need for images where
-;              the noise is low, and pixel values are quantized.   
+;              the noise is low, and pixel values are quantized.
 ;     /SILENT -  If supplied and non-zero then no output is displayed to the
 ;               terminal.
-;     SETSKYVAL - Use this keyword to force the sky to a specified value 
-;               rather than have APER compute a sky value.    SETSKYVAL 
-;               can either be a scalar specifying the sky value to use for 
-;               all sources, or a 3 element vector specifying the sky value, 
-;               the sigma of the sky value, and the number of elements used 
+;     SETSKYVAL - Use this keyword to force the sky to a specified value
+;               rather than have APER compute a sky value.    SETSKYVAL
+;               can either be a scalar specifying the sky value to use for
+;               all sources, or a 3 element vector specifying the sky value,
+;               the sigma of the sky value, and the number of elements used
 ;               to compute a sky value.   The 3 element form of SETSKYVAL
 ;               is needed for accurate error budgeting.
 ;
@@ -87,12 +87,12 @@ pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
 ;     MAGS   -  NAPER by NSTAR array giving the magnitude for each star in
 ;               each aperture.  (NAPER is the number of apertures, and NSTAR
 ;               is the number of stars).   If the /FLUX keyword is not set, then
-;               a flux of 1 digital unit is assigned a zero point magnitude of 
+;               a flux of 1 digital unit is assigned a zero point magnitude of
 ;               25.
-;     ERRAP  -  NAPER by NSTAR array giving error for each star.  If a 
-;               magnitude could not be determined then  ERRAP = 9.99 (if in 
+;     ERRAP  -  NAPER by NSTAR array giving error for each star.  If a
+;               magnitude could not be determined then  ERRAP = 9.99 (if in
 ;                magnitudes) or ERRAP = !VALUES.F_NAN (if /FLUX is set).
-;     SKY  -    NSTAR element vector giving sky value for each star in 
+;     SKY  -    NSTAR element vector giving sky value for each star in
 ;               flux units
 ;     SKYERR -  NSTAR element vector giving error in sky values
 ;
@@ -103,11 +103,11 @@ pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
 ;       Poisson counts, so that PHPADU = 1, and the sky value is already known
 ;       to be 1.3, and that the range [-32767,80000] for bad low and bad high
 ;       pixels
-;      
+;
 ;
 ;       IDL> aper, im, 234.2, 344.3, flux, eflux, sky,skyerr, 1, [3,5], -1, $
 ;            [-32767,80000],/exact, /flux, setsky = 1.3
-;       
+;
 ; PROCEDURES USED:
 ;       GETOPT, MMM, PIXWT(), STRN(), STRNUMBER()
 ; NOTES:
@@ -120,23 +120,23 @@ pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
 ;
 ;
 ;       For the case where the source is fainter than the background, APER will
-;       return negative fluxes if /FLUX is set, but will otherwise give 
-;       invalid data (since negative fluxes can't be converted to magnitudes) 
-; 
+;       return negative fluxes if /FLUX is set, but will otherwise give
+;       invalid data (since negative fluxes can't be converted to magnitudes)
+;
 ;       APER was modified in June 2000 in two ways: (1) the /EXACT keyword was
 ;       added (2) the approximation of the intersection of a circular aperture
-;       with square pixels was improved (i.e. when /EXACT is not used) 
+;       with square pixels was improved (i.e. when /EXACT is not used)
 ; REVISON HISTORY:
 ;       Adapted to IDL from DAOPHOT June, 1989   B. Pfarr, STX
 ;       FLUX keyword added                       J. E. Hollis, February, 1996
 ;       SETSKYVAL keyword, increase maxsky       W. Landsman, May 1997
 ;       Work for more than 32767 stars           W. Landsman, August 1997
 ;       Don't abort for insufficient sky pixels  W. Landsman  May 2000
-;       Added /EXACT keyword                     W. Landsman  June 2000 
-;       Allow SETSKYVAL = 0                      W. Landsman  December 2000 
-;       Set BADPIX[0] = BADPIX[1] to ignore bad pixels W. L.  January 2001     
+;       Added /EXACT keyword                     W. Landsman  June 2000
+;       Allow SETSKYVAL = 0                      W. Landsman  December 2000
+;       Set BADPIX[0] = BADPIX[1] to ignore bad pixels W. L.  January 2001
 ;       Fix chk_badpixel problem introduced Jan 01 C. Ishida/W.L. February 2001
-;       Set bad fluxes and error to NAN if /FLUX is set  W. Landsman Oct. 2001 
+;       Set bad fluxes and error to NAN if /FLUX is set  W. Landsman Oct. 2001
 ;       Remove restrictions on maximum sky radius W. Landsman  July 2003
 ;       Added /NAN keyword  W. Landsman November 2004
 ;       Set badflux=0 if neither /NAN nor badpix is set  M. Perrin December 2004
@@ -147,20 +147,21 @@ pro aper,image,xc,yc,mags,errap,sky,skyerr,phpadu,apr,skyrad,badpix, $
 ;       Add additional keywords if /MEANBACK is set W.L  Nov 2006
 ;       Allow negative fluxes if /FLUX is set  W.L.  Mar 2008
 ;       Previous update would crash if first star was out of range  W.L. Mar 2008
+;		Added source output for DRIP   Jan 2009
 ;-
  COMPILE_OPT IDL2
  On_error,2
 ;             Set parameter limits
  minsky = 20   ;Smallest number of pixels from which the sky may be determined
  maxsky = 10000         ;Maximum number of pixels allowed in the sky annulus.
-;                                
+;
 if N_params() LT 3 then begin    ;Enough parameters supplied?
   print, $
   'Syntax - APER, image, xc, yc, [ mags, errap, sky, skyerr, phpadu, apr, '
   print,'             skyrad, badpix, /EXACT, /FLUX, SETSKYVAL = ,PRINT=, ]'
   print,'             /SILENT, /NAN'
   return
-endif 
+endif
 
  s = size(image)
  if ( s[0] NE 2 ) then message, $
@@ -171,7 +172,7 @@ endif
 
  if not keyword_set(nan) then begin
  if (N_elements(badpix) NE 2) then begin ;Bad pixel values supplied
-GET_BADPIX:  
+GET_BADPIX:
    ans = ''
    print,'Enter low and high bad pixel values, [RETURN] for defaults'
    read,'Low and high bad pixel values [none]: ',ans
@@ -182,7 +183,7 @@ GET_BADPIX:
         goto,GET_BADPIX
    endif
    endelse
- endif 
+ endif
 
  chk_badpix = badpix[0] LT badpix[1]     ;Ignore bad pixel checks?
  endif
@@ -192,14 +193,14 @@ GET_BADPIX:
    read, 'Enter first aperture radius: ',ap
    apr[0] = ap
    ap = 'aper'
-   for i = 1,9 do begin                                                   
-GETAP: 
+   for i = 1,9 do begin
+GETAP:
       read,'Enter another aperture radius, [RETURN to terminate]: ',ap
-      if ap EQ '' then goto,DONE  
+      if ap EQ '' then goto,DONE
       result = strnumber(ap,val)
-      if result EQ 1 then apr[i] = val else goto, GETAP   
+      if result EQ 1 then apr[i] = val else goto, GETAP
    endfor
-DONE: 
+DONE:
    apr = apr[0:i-1]
  endif
 
@@ -218,7 +219,7 @@ DONE:
    read,'Enter inner and outer sky radius (pixel units): ',skyrad
  endif else skyrad = float(skyrad)
 
- if ( N_elements(phpadu) LT 1 ) then $ 
+ if ( N_elements(phpadu) LT 1 ) then $
    read,'Enter scale factor in Photons per Analog per Digital Unit: ',phpadu
 
  Naper = N_elements( apr )                        ;Number of apertures
@@ -232,20 +233,20 @@ DONE:
  fmt3 = '(I4,5F8.2,6A,2(/,44x,9A,:))'            ;Print format
 
  mags = fltarr( Naper, Nstars) & errap = mags           ;Declare arrays
- sky = fltarr( Nstars )        & skyerr = sky     
+ sky = fltarr( Nstars )        & skyerr = sky
  area = !PI*apr*apr                 ;Area of each aperture
 
  if keyword_set(EXACT) then begin
       bigrad = apr + 0.5
-      smallrad = apr/sqrt(2) - 0.5 
+      smallrad = apr/sqrt(2) - 0.5
  endif
-     
+
 
  if N_elements(SETSKYVAL) EQ 0 then begin
 
-     rinsq =  (skyrad[0]> 0.)^2 
+     rinsq =  (skyrad[0]> 0.)^2
      routsq = skyrad[1]^2
- endif 
+ endif
 
  if keyword_set(PRINT) then begin      ;Open output file and write header info?
    if size(PRINT,/TNAME) NE 'STRING'  then file = 'aper.prt' $
@@ -272,8 +273,8 @@ DONE:
  if not SILENT then begin
     if (KEYWORD_SET(FLUX)) then begin
        print, format="(/1X,'Star',5X,'X',7X,'Y',6X,'Sky',8X,'Fluxes')"
-    endif else print, $ 
-       format="(/1X,'Star',5X,'X',7X,'Y',6X,'Sky',8X,'Magnitudes')" 
+    endif else print, $
+       format="(/1X,'Star',5X,'X',7X,'Y',6X,'Sky',8X,'Magnitudes')"
  endif
 
 ;  Compute the limits of the submatrix.   Do all stars in vector notation.
@@ -294,37 +295,37 @@ DONE:
  badindex = where( badstar, Nbad)              ;Any stars outside image
  if ( Nbad GT 0 ) then message, /INF, $
       'WARNING - ' + strn(nbad) + ' star positions outside image'
-      if keyword_set(flux) then begin 
+      if keyword_set(flux) then begin
           badval = !VALUES.F_NAN
 	  baderr = badval
-      endif else begin 
+      endif else begin
           badval = 99.999
 	  baderr = 9.999
-      endelse	  	  
- 
+      endelse
+
  for i = 0L, Nstars-1 do begin           ;Compute magnitudes for each star
-   apmag = replicate(badval, Naper)   & magerr = replicate(baderr, Naper) 
+   apmag = replicate(badval, Naper)   & magerr = replicate(baderr, Naper)
    skymod = 0. & skysig = 0. &  skyskw = 0.  ;Sky mode sigma and skew
-   if badstar[i] then goto, BADSTAR         
+   if badstar[i] then goto, BADSTAR
    error1=apmag   & error2 = apmag   & error3 = apmag
 
    rotbuf = image[ lx[i]:ux[i], ly[i]:uy[i] ] ;Extract subarray from image
 ;  RSQ will be an array, the same size as ROTBUF containing the square of
 ;      the distance of each pixel to the center pixel.
 
- 
+
     dxsq = ( findgen( nx[i] ) - dx[i] )^2
     rsq = fltarr( nx[i], ny[i], /NOZERO )
    for ii = 0, ny[i]-1 do rsq[0,ii] = dxsq + (ii-dy[i])^2
 
 
- if keyword_set(exact) then begin 
+ if keyword_set(exact) then begin
        nbox = lindgen(nx[i]*ny[i])
        xx = reform( (nbox mod nx[i]), nx[i], ny[i])
        yy = reform( (nbox/nx[i]),nx[i],ny[i])
-       x1 = abs(xx-dx[i]) 
+       x1 = abs(xx-dx[i])
        y1 = abs(yy-dy[i])
-  endif else begin 
+  endif else begin
    r = sqrt(rsq) - 0.5    ;2-d array of the radius of each pixel in the subarray
  endelse
 
@@ -336,21 +337,21 @@ DONE:
  if keyword_set(nan) then skypix = skypix and finite(rotbuf) $
  else if chk_badpix then skypix = skypix and ( rotbuf GT badpix[0] ) and $
         (rotbuf LT badpix[1] )
- sindex =  where(skypix, Nsky) 
+ sindex =  where(skypix, Nsky)
  Nsky =   Nsky < maxsky   ;Must be less than MAXSKY pixels
  if ( nsky LT minsky ) then begin                       ;Sufficient sky pixels?
     if not silent then $
         message,'There aren''t enough valid pixels in the sky annulus.',/con
     goto, BADSTAR
  endif
-  skybuf = rotbuf[ sindex[0:nsky-1] ]     
+  skybuf = rotbuf[ sindex[0:nsky-1] ]
 
   if keyword_set(meanback) then $
-   meanclip,skybuf,skymod,skysig, $ 
+   meanclip,skybuf,skymod,skysig, $
          CLIPSIG=clipsig, MAXITER=maxiter, CONVERGE_NUM=converge_num  else $
      mmm, skybuf, skymod, skysig, skyskw, readnoise=readnoise
-           
- 
+
+
 
 ;  Obtain the mode, standard deviation, and skewness of the peak in the
 ;      sky histogram, by calling MMM.
@@ -361,7 +362,7 @@ DONE:
 ;If the modal sky value could not be determined, then all apertures for this
 ; star are bad
 
- if ( skysig LT 0.0 ) then goto, BADSTAR 
+ if ( skysig LT 0.0 ) then goto, BADSTAR
 
  skysig = skysig < 999.99      ;Don't overload output formats
  skyskw = skyskw >(-99)<999.9
@@ -386,7 +387,7 @@ endelse
        bad = where(  (x1 GT bigrad[k]) or (y1 GT bigrad[k] ))   ;Fix 05-Dec-05
        mask[bad] = -1
 
-       gfract = where(mask EQ 0.0, Nfract) 
+       gfract = where(mask EQ 0.0, Nfract)
        if Nfract GT 0 then mask[gfract] = $
 		PIXWT(dx[i],dy[i],apr[k],xx[gfract],yy[gfract]) > 0.0
        thisap = where(mask GT 0.0)
@@ -404,6 +405,7 @@ endelse
        factor = (area[k] - Nfull ) / total(fractn[gfract])
       fractn[gfract] = fractn[gfract]*factor
     endelse
+    source=total(thisapd,/nan)
 
 ;     If the pixel is bad, set the total counts in this aperture to a large
 ;        negative number
@@ -414,18 +416,18 @@ endelse
      minthisapd = min(thisapd, max = maxthisapd)
      badflux = (minthisapd LE badpix[0] ) or ( maxthisapd GE badpix[1])
    endif else badflux = 0
-  
-   if not badflux then $ 
+
+   if not badflux then $
                  apmag[k] = total(thisapd*fractn) ;Total over irregular aperture
   endif
 endfor ;k
    if keyword_set(flux) then g = where(finite(apmag), Ng)  else $
                               g = where(apmag NE badval, Ng)
-   if Ng GT 0 then begin 
+   if Ng GT 0 then begin
   apmag[g] = apmag[g] - skymod*area[g]  ;Subtract sky from the integrated brightnesses
 
    error1[g] = area[g]*skyvar   ;Scatter in sky values
-   error2[g] = (apmag[g] > 0)/phpadu  ;Random photon noise 
+   error2[g] = (apmag[g] > 0)/phpadu  ;Random photon noise
    error3[g] = sigsq*area[g]^2  ;Uncertainty in mean sky brightness
    magerr[g] = sqrt(error1[g] + error2[g] + error3[g])
 
@@ -433,13 +435,13 @@ endfor ;k
     good = where (apmag GT 0.0, Ngood)     ;Are there any valid integrated fluxes?
     if ( Ngood GT 0 ) then begin               ;If YES then compute errors
       magerr[good] = 1.0857*magerr[good]/apmag[good]   ;1.0857 = log(10)/2.5
-      apmag[good] =  25.-2.5*alog10(apmag[good])  
+      apmag[good] =  25.-2.5*alog10(apmag[good])
    endif
- endif  
+ endif
  endif
 
- BADSTAR:   
- 
+ BADSTAR:
+
 ;Print out magnitudes for this star
 
  for ii = 0,Naper-1 do $              ;Concatenate mags into a string
