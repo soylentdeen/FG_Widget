@@ -41,7 +41,7 @@ common gui_os_dependent_values, largefont, smallfont, mediumfont
 ; header
 headwid=widget_base(self.topwid, /column, /align_top)
 label=widget_label(headwid, value='Scale:', font=largefont, /align_left)
-setbase=widget_base(headwid, /column)
+setbase=widget_base(headwid, /row)
 colorwid=cw_color_sel(setbase, [0b,0b,0b], label='Color:' )
 topbase=widget_base(setbase, /row,/align_center)
 toplabel=widget_label(topbase, value='Top')
@@ -57,26 +57,26 @@ nsigmabutton=widget_button(radiobase,value='N-Sigma', font=mediumfont)
 percenbutton=widget_button(radiobase,value='Percent', font=mediumfont)
 widget_control,minmaxbutton,set_button=1
 
-;Min-Max Scaling
-minmaxbase=widget_base(rightbase,/row)
-; minbase
-minbase=widget_base(minmaxbase, /row )
-; min values
-minfield=widget_base(minbase, /row )
-mintext=cw_field(minfield, title='Min :', /floating, /return_events,$
-                 xsize=5,ysize=3 )
-automin=widget_base(minfield, /column, /nonexclusive)
-minautoset=widget_button(automin, value='Auto ' )
+;; Min-Max Scaling
+;; minmaxbase=widget_base(rightbase,/row)
+;; minbase
+;; minbase=widget_base(minmaxbase, /row )
+;; min values
+;; minfield=widget_base(minbase, /row )
+;; mintext=cw_field(minfield, title='Min :', /floating, /return_events,$
+;;                  xsize=5,ysize=3 )
+;; automin=widget_base(minfield, /column, /nonexclusive)
+;; minautoset=widget_button(automin, value='Auto ' )
 
-; maxbase
-maxbase=widget_base(minmaxbase, /row )
+;; maxbase
+;; maxbase=widget_base(minmaxbase, /row )
 
-; max values
-maxfield=widget_base(maxbase, /row)
-maxtext=cw_field(maxfield, title='Max :', /floating, /return_events,$
-                 xsize=5,ysize=3 )
-automax=widget_base(maxfield, /column, /nonexclusive)
-maxautoset=widget_button(automax, value='Auto' )
+;; max values
+;; maxfield=widget_base(maxbase, /row)
+;; maxtext=cw_field(maxfield, title='Max :', /floating, /return_events,$
+;;                  xsize=5,ysize=3 )
+;; automax=widget_base(maxfield, /column, /nonexclusive)
+;; maxautoset=widget_button(automax, value='Auto' )
 
 ;** initialize anal_objects
 dispn=size(disps,/n_elements)
@@ -87,9 +87,10 @@ for i=0,dispn-1 do begin
     anal=obj_new('drip_anal_scale', disps[i], self, $
                     'Scale:', wid)
     anal->setwid, label, colorwid, topwid,$
-      minmaxbase,  mintext, minautoset, $
-      maxtext, maxautoset, minmaxbutton, $
-      nsigmabutton, percenbutton, rightbase
+                  minmaxbutton, nsigmabutton, percenbutton, rightbase
+                                ;minmaxbase,  mintext, minautoset, $
+                                ;maxtext, maxautoset, $
+                  
     disps[i]->openanal, anal
     (*self.anals)[i]=anal
 endfor

@@ -71,9 +71,6 @@ self.mode=''
 self.cnt=0
 self.name=''
 self.next=0
-
-print,'PIPEMAN RESET'
-
 end
 
 ;******************************************************************************
@@ -160,7 +157,7 @@ if (filelist[0] ne '') then begin
         sz=size(filelist, /n_elements)
         if sz gt 1 then self.mw->print, 'files ' + $
           file_basename(filelist[0]) + ' to ' + $
-          file_basename(filelist[sz-1]) + ' added to filelist' $ 
+          file_basename(filelist[sz-1]) + ' added to filelist' $
         else self.mw->print, 'file ' + file_basename(filelist) + $
           ' added to filelist'
         print,self.n,self.ind,*self.filelist
@@ -295,10 +292,12 @@ if (self.ind gt 0) then begin
     if filename ne '' then begin
         self.savepath=path
         self.drip->save, filename=filename
+        print,'saved reduced image: ', filename
         self.mw->print, 'saved reduced image.'
         self.saveflag=1
     endif
 endif else self.mw->print,'No new reduced files to save'
+print,filename
 end
 
 ;******************************************************************************
@@ -318,7 +317,7 @@ end
 pro drip_pipeman::dispconf, event
 dispn=size(*self.disp_sels,/n_elements)
 framelist=['None','Data','Cleaned','Badflags','Flatted','Stacked', $
-           'Undistorted','Merged','Coadded','Coadded_rot','Badmap','Masterflat']
+           'Undistorted','Merged','Coadded','Badmap','Masterflat']
 framen=size(framelist,/n_elements)
 common gui_os_dependent_values, largefont, smallfont
 case event.id of
@@ -539,6 +538,8 @@ endelse
 self.dispnewpipe=ptr_new(/allocate_heap)
 ; get display setup popup status memory
 self.dispconfstat=ptr_new(/allocate_heap)
+; set saveflag to 1 so that the gui doesnt ask for saving when it doesnt have any data
+self.saveflag=1
 return, 1
 end
 

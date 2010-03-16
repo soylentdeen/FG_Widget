@@ -678,7 +678,7 @@ lab=widget_label(cbase3, value="Data In Focus: ", /frame, $
 self.dap_select=widget_droplist(cbase3, value=['  No Data Products  '], $
                                 event_pro='drip_eventhand', $
                                 uvalue={object:self, method:'input' }, $
-                                font=smallfont, sensitive=0, ysize=37)
+                                font=smallfont, sensitive=0, ysize=35)
 self.dap_delete=widget_button(cbase3, value='Delete', $
                               event_pro='drip_eventhand',$
                               uvalue={object:self, method:'input' }, $

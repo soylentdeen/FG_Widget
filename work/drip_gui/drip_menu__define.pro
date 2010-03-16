@@ -81,7 +81,7 @@ pro drip_menu::open_fits, event
 files=dialog_pickfile(filter=*self.loadfilter, $
       /fix_filter, /must_exist, /read, get_path=path, $
       path=self.loadfitspath, dialog_parent=event.top, /multiple_files )
-if (files[0] ne '') then begin
+if files[0] ne '' then begin
     ; determine common filename length -> clen
     n=(size(files))[1]
     names=files
@@ -161,10 +161,6 @@ pro drip_menu::reset, event
 ; reset objects
 for i=0,self.manobjlistn-1 do self.manobjlists[i]->reset
 self.dataman->reset
-self.pipeman->reset
-print,self.pipeman
-help,self.pipeman
-print,'MENU RESET'
 ; message
 self.mw->print, "GUI reset"
 end
@@ -184,23 +180,35 @@ if not(saveflag) then begin
                         /cancel,$
                         /center,$
                         dialog_parent=event.top)
-   if (reply eq 'Yes') then self.pipeman->save
-endif
+   case reply of
+      'Yes': self.pipeman->save
+        ;if cancel then dont exit
+      'Cancel':goto,skipexit
+      'No':
+   endcase
+endif else begin
+   reply=dialog_message('Are you sure you want to exit?',$
+                        /question,$
+                        /center,$
+                        dialog_parent=event.top)
+   if (reply eq 'No') then goto, skipexit
 
-;if cancel then dont exit
-if not(reply eq 'Cancel') then begin
-   ; querry configuration name if necessary
-   common gui_config_info, guiconf
-   conffilename=guiconf[0]
-   if strlen(conffilename) eq 0 then begin
-      conffilename=dialog_pickfile(/write, $
-                                   title='Save GUI Conf File:',$
-                                   file='guiconf.txt')
-   endif
-   guiconf[0]=conffilename
-   ; destroy top widget
-   widget_control, event.top, /destroy
+endelse
+
+
+; querry configuration name if necessary
+common gui_config_info, guiconf
+conffilename=guiconf[0]
+if strlen(conffilename) eq 0 then begin
+   conffilename=dialog_pickfile(/write, $
+                                title='Save GUI Conf File:',$
+                                file='guiconf.txt')
 endif
+guiconf[0]=conffilename
+; destroy top widget
+widget_control, event.top, /destroy
+
+skipexit:
 
 end
 

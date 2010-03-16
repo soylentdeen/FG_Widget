@@ -2,7 +2,7 @@
 ;     CW_DRIP_DISP - Version .7.0
 ;
 ; PURPOSE:
-;     Display window compount widget
+;     Display window compound widget
 ;
 ; CALLING SEQUENCE:
 ;     WidgetID = CW_DRIP_DISP( TOP, INDEX=IN, XSIZE=XS, YSIZE=YS)
@@ -37,7 +37,7 @@
 ;     WidgetID - the widget ID of the top level base of the compound widget.
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     SMTV
+;     ATV
 ;
 ; SIDE EFFECTS:
 ;     None
@@ -175,7 +175,7 @@ end
 
 pro drip_disp::draw
 ;set 24-bit color indices
-device, decomposed=1
+device,decomposed=1
 ; draw border in appropriate color
 display=fltarr(self.xsize+4,self.ysize+4)
 display[*,*]=self.focus*255.0

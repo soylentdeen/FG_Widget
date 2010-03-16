@@ -158,9 +158,18 @@ for anali=0,self.analn-1 do begin
             newwids.log=widget_button(colwids.log, value=' ', ysize=25)
             newwids.color=cw_color_sel(colwids.color, [0b,0b,0b], $
                                        xsize=32, ysize=19)
-            newwids.data=widget_label(colwids.data, ysize=25, /align_left, $
-                 font=smallfont, $
-                 value='                                                   ')
+            ;newwids.data=widget_label(colwids.data, ysize=25, /align_left, $
+            ;     font=smallfont, $
+                                ;     value='
+                                ;     ')
+            data=lonarr(4)
+            row=widget_base((colwids.data)[0], column=4,/frame)
+            ;row=(colwids.data)[0]
+            for i=0,3 do begin
+               label=widget_label(row,xsize=65, font=smallfont,/align_center)
+               data[i]=label
+            endfor
+            newwids.data=[row,data]
             ; append them to wids
             *self.wids=[*self.wids,newwids]
             ;print,'  Creating new widget label=',newwids.label
@@ -194,7 +203,9 @@ if widi lt widn then begin
         widget_control, oldwids.close, /destroy
         widget_control, oldwids.color, /destroy
         widget_control, oldwids.log, /destroy
-        widget_control, oldwids.data, /destroy
+        ;for i=0,3 do begin
+        widget_control, oldwids.data[0], /destroy
+        ;endfor
         widn=widn-1
     end
     ; shorten wids
@@ -259,12 +270,20 @@ loglabel=widget_label(log, value='Log')
 color=widget_base(table, /column)
 colorlabel=widget_label(color, value='Color')
 ; data
-data=widget_base(table, /column)
-datalabel=widget_label(data, font=smallfont, /align_left, $
-    value='  XPos   YPos   FWHM_X FWHM_Y  Ampl     OffSet  ')
+dataheaders=['FWHM', 'Source', 'Noise', 'S/N']
+dtbl=widget_base(table, /column)
+row=widget_base(dtbl, column=6)
+;row-data[0]
+for i=0,3 do begin
+   datalabel=widget_label(row, font=smallfont, /frame, $
+                          value=dataheaders[i], xsize=65)
+endfor
+data=lonarr(5)
+data[*]=widget_base(dtbl, column=1)
+
 ;** create structure and fill in
 widlist={drip_anal_point_wids, label:label, show:show, top:top, $
-         close:close, log:log, color:color, data:data }
+         close:close, log:log, color:color, data:data}
 *self.wids=[widlist]
 
 return, 1

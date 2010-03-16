@@ -36,6 +36,9 @@
 ;                  Created from drip_anal_scale__define.pro
 ;     Modified:    Marc Berthoud, CU, July 2006
 ;                  Modified to use DAPs from dataman
+;     Fixed:       Marc Berthoud, Yerkes, March 2010
+;                  Added code to compensate for loss of window focus
+;                  after droplist events
 
 ;****************************************************************************
 ;     RESET - reset the object
@@ -54,39 +57,39 @@ end
 pro drip_anal_select::update
 
 if self.focus then begin
-    ; set DAta Product to choose
-    if self.dapn gt 0 then begin
-        widget_control, self.drop_dap, set_droplist_select=self.dap_sel, $
-          set_value=*self.daplist, sensitive=1
-    endif else begin
-        widget_control, self.drop_dap, set_droplist_select=0, sensitive=0, $
-          set_value=*self.daplist
-    endelse
-    ; set element to choose
-    if self.elemn gt 0 then begin
-        widget_control, self.drop_elem, set_droplist_select=self.elem_sel, $
-          set_value=*self.elemlist, sensitive=1
-    endif else begin
-        widget_control, self.drop_elem, set_droplist_select=0, sensitive=0, $
-          set_value=*self.daplist
-    endelse
-    ; set frame step to choose
-    imgsize=size(*self.dataraw)
-    if imgsize[0] gt 2 then begin
-        val=indgen(imgsize[3])+1
-        vals=strtrim(string(val),2)+'/'+strtrim(string(imgsize[3]),2)
-        widget_control, self.drop_frame, set_droplist_select=self.frame_sel, $
-          sensitive=1, set_value=vals
-    endif else begin
-        widget_control, self.drop_frame, set_droplist_select=0, sensitive=0, $
-          set_value=['0']
-    endelse
-    ; set TV button sensitive or not
-    if self.elemn gt 0 then begin
-        widget_control, self.button_tv, sensitive=1
-    endif else begin
-        widget_control, self.button_tv, sensitive=0
-    endelse
+   ; set DAta Product to choose
+   if self.dapn gt 0 then begin
+       widget_control, self.drop_dap, set_droplist_select=self.dap_sel, $
+         set_value=*self.daplist, sensitive=1
+   endif else begin
+       widget_control, self.drop_dap, set_droplist_select=0, sensitive=0, $
+         set_value=*self.daplist
+   endelse
+   ; set element to choose
+   if self.elemn gt 0 then begin
+       widget_control, self.drop_elem, set_droplist_select=self.elem_sel, $
+         set_value=*self.elemlist, sensitive=1
+   endif else begin
+       widget_control, self.drop_elem, set_droplist_select=0, sensitive=0, $
+         set_value=*self.daplist
+   endelse
+   ; set frame step to choose
+   imgsize=size(*self.dataraw)
+   if imgsize[0] gt 2 then begin
+       val=indgen(imgsize[3])+1
+       vals=strtrim(string(val),2)+'/'+strtrim(string(imgsize[3]),2)
+       widget_control, self.drop_frame, set_droplist_select=self.frame_sel, $
+         sensitive=1, set_value=vals
+   endif else begin
+       widget_control, self.drop_frame, set_droplist_select=0, sensitive=0, $
+         set_value=['0']
+   endelse
+   ; set TV button sensitive or not
+   if self.elemn gt 0 then begin
+       widget_control, self.button_tv, sensitive=1
+   endif else begin
+       widget_control, self.button_tv, sensitive=0
+   endelse
 endif
 end
 
@@ -98,37 +101,37 @@ pro drip_anal_select::imageget
 
 ;** get correct element
 if self.elemn gt 0 then begin
-    ; get names
-    dapname=(*self.daplist)[self.dap_sel]
-    elemname=strupcase((*self.elemlist)[self.elem_sel])
-    ; get data
-    image=self.dataman->getelement(dapname,elemname)
-    if size(image,/N_dimensions) gt 0 then begin
-        imgtext=dapname+'['+elemname
-    endif else begin
-        image=fltarr(256,256)
-        imgtext='none'
-    endelse
+   ; get names
+   dapname=(*self.daplist)[self.dap_sel]
+   elemname=strupcase((*self.elemlist)[self.elem_sel])
+   ; get data
+   image=self.dataman->getelement(dapname,elemname)
+   if size(image,/N_dimensions) gt 0 then begin
+       imgtext=dapname+'['+elemname
+   endif else begin
+       image=fltarr(256,256)
+       imgtext='none'
+   endelse
 endif else begin
-    image=fltarr(256,256)
-    imgtext='none'
+   image=fltarr(256,256)
+   imgtext='none'
 endelse
 *self.dataraw=image
 ;** if multiframe select right frame
 imgsize=size(image)
 if imgsize[0] gt 2 then begin
-    ; set self.frame if necessary
-    self.framen=imgsize[3]
-    if self.frame_sel ge imgsize[3] then begin
-        self.frame_sel=0
-    endif
-    ; get image
-    image=image[*,*,self.frame_sel]
-    imgtext=imgtext+'['+strtrim(string(self.frame_sel),2)+']]'
+   ; set self.frame if necessary
+   self.framen=imgsize[3]
+   if self.frame_sel ge imgsize[3] then begin
+       self.frame_sel=0
+   endif
+   ; get image
+   image=image[*,*,self.frame_sel]
+   imgtext=imgtext+'['+strtrim(string(self.frame_sel),2)+']]'
 endif else begin 
-    imgtext=imgtext+']'
-    self.frame_sel=0
-    self.framen=0
+   imgtext=imgtext+']'
+   self.frame_sel=0
+   self.framen=0
 endelse
 ;** pass image (2d) to disp
 self.disp->imageset,image,imgtext
@@ -148,18 +151,18 @@ self.dapn=self.dataman->listdap(list)
 *self.daplist=list
 ; if dapn=0 put empty data
 if self.dapn eq 0 then begin
-    self.dap_sel=0
-    self.elem_sel=0
-    self.frame_sel=0
-    *self.daplist=['No Data Products']
-    *self.elemlist=['No Elements']
-    self->imageget
-    return
+   self.dap_sel=0
+   self.elem_sel=0
+   self.frame_sel=0
+   *self.daplist=['No Data Products']
+   *self.elemlist=['No Elements']
+   self->imageget
+   return
 endif
 ; check if old dap seleciton available else set to first dap
 dapi=-1
 repeat dapi=dapi+1 $
-  until (olddap eq (*self.daplist)[dapi]) or (dapi eq self.dapn-1)
+ until (olddap eq (*self.daplist)[dapi]) or (dapi eq self.dapn-1)
 if olddap eq (*self.daplist)[dapi] then dap_sel=dapi else dap_sel=0
 self.dap_sel=dap_sel
 ;** get valid element list for current dap (i.e. 2D or 3D images)
@@ -168,44 +171,44 @@ elemtot=self.dataman->listelement(dapname,fulllist)
 self.elemn=0
 elemsize=[0,0]
 for elemi=0,elemtot-1 do begin
-    elemsize=self.dataman->checkelement(dapname,fulllist[elemi],/size)
-    ; check if a valid element -> add to list
-    if elemsize[0] gt 1 then begin
-        name=strmid(fulllist[elemi],0,1)+ $
-          strlowcase(strmid(fulllist[elemi],1))
-        if self.elemn gt 0 then begin
-            *self.elemlist=[*self.elemlist,name]
-        endif else begin
-            *self.elemlist=[name]
-        endelse
-        self.elemn=self.elemn+1
-    endif
+   elemsize=self.dataman->checkelement(dapname,fulllist[elemi],/size)
+   ; check if a valid element -> add to list
+   if elemsize[0] gt 1 then begin
+       name=strmid(fulllist[elemi],0,1)+ $
+         strlowcase(strmid(fulllist[elemi],1))
+       if self.elemn gt 0 then begin
+           *self.elemlist=[*self.elemlist,name]
+       endif else begin
+           *self.elemlist=[name]
+       endelse
+       self.elemn=self.elemn+1
+   endif
 endfor
 ;** set self.elem_sel
 ; check if any elements available
 if self.elemn gt 0 then begin
 ; look for current element selection
-    elemi=-1
-    repeat elemi=elemi+1 until $
-      ((*self.elemlist)[elemi] eq oldelem) or (elemi eq self.elemn-1)
-    if (*self.elemlist)[elemi] eq oldelem then begin
-        self.elem_sel=elemi
-    endif else begin
-    ; if not found look for preferred element seleciton
-        elemi=-1
-        repeat elemi=elemi+1 $
-          until ((*self.elemlist)[elemi] eq self.elem_pref) or $
-          (elemi eq self.elemn-1)
-        if (*self.elemlist)[elemi] eq self.elem_pref then begin
-            self.elem_sel=elemi
-        endif else begin
-            self.elem_sel=0
-        endelse
-    endelse
+   elemi=-1
+   repeat elemi=elemi+1 until $
+     ((*self.elemlist)[elemi] eq oldelem) or (elemi eq self.elemn-1)
+   if (*self.elemlist)[elemi] eq oldelem then begin
+       self.elem_sel=elemi
+   endif else begin
+   ; if not found look for preferred element seleciton
+       elemi=-1
+       repeat elemi=elemi+1 $
+         until ((*self.elemlist)[elemi] eq self.elem_pref) or $
+         (elemi eq self.elemn-1)
+       if (*self.elemlist)[elemi] eq self.elem_pref then begin
+           self.elem_sel=elemi
+       endif else begin
+           self.elem_sel=0
+       endelse
+   endelse
 endif else begin
-    self.elem_sel=0
-    self.frame_sel=0
-    *self.elemlist=['No Elements']
+   self.elem_sel=0
+   self.frame_sel=0
+   *self.elemlist=['No Elements']
 endelse
 ; call imageget
 self->imageget
@@ -218,118 +221,127 @@ end
 pro drip_anal_select::input, event
 ; set variables
 case event.id of
-    ; DAta Product selection
-    self.drop_dap:begin
-        ; save old element (string)
-        oldelem=(*self.elemlist)[self.elem_sel]
-        ; get new dap index and name
-        self.dap_sel=event.index
-        dapname=(*self.daplist)[self.dap_sel]
-        ;** get valid elements list for new dap
-        elemtot=self.dataman->listelement(dapname,fulllist)
-        self.elemn=0
-        for elemi=0,elemtot-1 do begin
-            elemsize=self.dataman->checkelement(dapname,fulllist[elemi],/size)
-            ; check if a valid element -> add to list
-            if elemsize[0] gt 1 then begin
-                name=strmid(fulllist[elemi],0,1)+ $
-                  strlowcase(strmid(fulllist[elemi],1))
-                if self.elemn gt 0 then begin
-                    *self.elemlist=[*self.elemlist,name]
-                endif else begin
-                    *self.elemlist=[name]
-                endelse
-                self.elemn=self.elemn+1
-            endif
-        endfor
-        ;** set self.elem_sel
-        ; check if any elements available
-        if self.elemn gt 0 then begin
-            ; look for current element selection
-            elemi=-1
-            repeat elemi=elemi+1 until $
-              ((*self.elemlist)[elemi] eq oldelem) or (elemi eq self.elemn-1)
-            if (*self.elemlist)[elemi] eq oldelem then begin
-                self.elem_sel=elemi
-            endif else begin
-                ; if not found look for preferred element seleciton
-                elemi=-1
-                repeat elemi=elemi+1 $
-                  until ((*self.elemlist)[elemi] eq self.elem_pref) or $
-                  (elemi eq self.elemn-1)
-                if (*self.elemlist)[elemi] eq self.elem_pref then begin
-                    self.elem_sel=elemi
-                endif else begin
-                    self.elem_sel=0
-                endelse
-            endelse
-        endif else begin
-            self.elem_sel=0
-            *self.elemlist=['No Elements']
-        endelse
-        self->imageget
-        self.dataman->callinfo,dapsel=dapname
-    end
-    ; element selection
-    self.drop_elem:begin
-        self.elem_sel=event.index
-        dapname=(*self.daplist)[self.dap_sel]
-        ; set frame_sel to valid value
-        elemsize=self.dataman->checkelement( $
-          dapname,(*self.elemlist)[self.elem_sel], /size)
-        if elemsize[0] lt 3 then self.frame_sel=0 else begin
-            if self.frame_sel gt elemsize[3]-1 then self.frame_sel=0
-        endelse
-        ; call imageget
-        self->imageget
-        ; save selection into elem_pref if we're in a pipe dap
-        if self.dataman->checkelement(dapname,'MODE') then $
-          self.elem_pref=(*self.elemlist)[self.elem_sel]
-    end
-    ; frame selection
-    self.drop_frame:begin
-        if self.framen gt 1 then begin
-            self.frame_sel=event.index
-            self->imageget
-        endif
-    end
-    self.button_tv:begin
-        atv,(*self.dataraw)
-        ; smtv, *self.dataraw, lead=event.top, size=2*256
-    end
-    self.disp_draw:begin
-        if event.type eq 6 then begin
-            case event.key of
-                5:begin ; left -> decrease frame number
-                    if (self.framen gt 0) and (self.frame_sel gt 0) then begin
-                        self.frame_sel=self.frame_sel-1
-                        self->imageget
-                    endif                    
-                end
-                6:begin ; right -> increase frame number
-                    if (self.framen gt 0) and $
-                      (self.frame_sel lt self.framen-1) then begin
-                        self.frame_sel=self.frame_sel+1
-                        self->imageget
-                    endif
-                end
-                7:begin ; up -> previous element
-                    if(self.elemn gt 0) and (self.elem_sel gt 0) then begin
-                        self.elem_sel=self.elem_sel-1
-                        self->imageget
-                    endif
-                end
-                8:begin ; down -> next element
-                    if(self.elemn gt 0) and $
-                      (self.elem_sel lt self.elemn-1) then begin
-                        self.elem_sel=self.elem_sel+1
-                        self->imageget
-                    endif
-                end
-            endcase
-        endif
-    end
-    else:
+   ; DAta Product selection
+   self.drop_dap:begin
+       ; save old element (string)
+       oldelem=(*self.elemlist)[self.elem_sel]
+       ; get new dap index and name
+       self.dap_sel=event.index
+       dapname=(*self.daplist)[self.dap_sel]
+       ;** get valid elements list for new dap
+       elemtot=self.dataman->listelement(dapname,fulllist)
+       self.elemn=0
+       for elemi=0,elemtot-1 do begin
+           elemsize=self.dataman->checkelement(dapname,fulllist[elemi],/size)
+           ; check if a valid element -> add to list
+           if elemsize[0] gt 1 then begin
+               name=strmid(fulllist[elemi],0,1)+ $
+                 strlowcase(strmid(fulllist[elemi],1))
+               if self.elemn gt 0 then begin
+                   *self.elemlist=[*self.elemlist,name]
+               endif else begin
+                   *self.elemlist=[name]
+               endelse
+               self.elemn=self.elemn+1
+           endif
+       endfor
+       ;** set self.elem_sel
+       ; check if any elements available
+       if self.elemn gt 0 then begin
+           ; look for current element selection
+           elemi=-1
+           repeat elemi=elemi+1 until $
+             ((*self.elemlist)[elemi] eq oldelem) or (elemi eq self.elemn-1)
+           if (*self.elemlist)[elemi] eq oldelem then begin
+               self.elem_sel=elemi
+           endif else begin
+               ; if not found look for preferred element seleciton
+               elemi=-1
+               repeat elemi=elemi+1 $
+                 until ((*self.elemlist)[elemi] eq self.elem_pref) or $
+                 (elemi eq self.elemn-1)
+               if (*self.elemlist)[elemi] eq self.elem_pref then begin
+                   self.elem_sel=elemi
+               endif else begin
+                   self.elem_sel=0
+               endelse
+           endelse
+       endif else begin
+           self.elem_sel=0
+           *self.elemlist=['No Elements']
+       endelse
+       self->imageget
+       self.dataman->callinfo,dapsel=dapname
+       ; Set focus to display (fixes loss of focus by droplist widgets)
+       widget_control, self.disp->getdata(/draw), /INPUT_FOCUS
+   end
+   ; element selection
+   self.drop_elem:begin
+       self.elem_sel=event.index
+       dapname=(*self.daplist)[self.dap_sel]
+       ; set frame_sel to valid value
+       elemsize=self.dataman->checkelement( $
+         dapname,(*self.elemlist)[self.elem_sel], /size)
+       if elemsize[0] lt 3 then self.frame_sel=0 else begin
+           if self.frame_sel gt elemsize[3]-1 then self.frame_sel=0
+       endelse
+       ; call imageget
+       self->imageget
+       ; save selection into elem_pref if we're in a pipe dap
+       if self.dataman->checkelement(dapname,'MODE') then $
+         self.elem_pref=(*self.elemlist)[self.elem_sel]
+       ; Set focus to display (fixes loss of focus by droplist widgets)
+       widget_control, self.disp->getdata(/draw), /INPUT_FOCUS
+   end
+   ; frame selection
+   self.drop_frame:begin
+       if self.framen gt 1 then begin
+           self.frame_sel=event.index
+           self->imageget
+       endif
+       ; Set focus to display (fixes loss of focus by droplist widgets)
+       widget_control, self.disp->getdata(/draw), /INPUT_FOCUS
+   end
+   self.button_tv:begin
+       atv,(*self.dataraw)
+       if (size(*self.dataraw))[0] EQ 3 then begin
+         drip_message,'ATV: Displaying 0th frame of 3-D array'
+       endif
+       ;smtv,(*self.dataraw);,lead=event.top, size=2*256
+   end
+   self.disp_draw:begin
+       if event.type eq 6 then begin
+           case event.key of
+               5:begin ; left -> decrease frame number
+                   if (self.framen gt 0) and (self.frame_sel gt 0) then begin
+                       self.frame_sel=self.frame_sel-1
+                       self->imageget
+                   endif                    
+               end
+               6:begin ; right -> increase frame number
+                   if (self.framen gt 0) and $
+                     (self.frame_sel lt self.framen-1) then begin
+                       self.frame_sel=self.frame_sel+1
+                       self->imageget
+                   endif
+               end
+               7:begin ; up -> previous element
+                   if(self.elemn gt 0) and (self.elem_sel gt 0) then begin
+                       self.elem_sel=self.elem_sel-1
+                       self->imageget
+                   endif
+               end
+               8:begin ; down -> next element
+                   if(self.elemn gt 0) and $
+                     (self.elem_sel lt self.elemn-1) then begin
+                       self.elem_sel=self.elem_sel+1
+                       self->imageget
+                   endif
+               end
+           endcase
+       endif
+   end
+   else:
 endcase
 end
 
@@ -351,25 +363,25 @@ end
 
 pro drip_anal_select::setfocus, focus
 if focus ne self.focus then begin
-    self.focus=focus
-    if focus eq 1 then begin
-        ;** set up widgets (callback functions, values and uvalues)
-        ; label
-        widget_control, self.labelwid, set_value=self.title
-        ; set pipe step droplist
-        widget_control, self.drop_elem, $
-          set_uvalue={object:self, method:'input'}
-        ; set sum select droplist
-        widget_control, self.drop_dap, $
-          set_uvalue={object:self, method:'input'}
-        ; set frame select droplist
-        widget_control, self.drop_frame, $
-          set_uvalue={object:self, method:'input'}
-        widget_control, self.button_tv, $
-          set_uvalue={object:self, method:'input'}
-        self.dataman->callinfo,dapsel=(*self.daplist)[self.dap_sel]
-    endif
-    self->update
+   self.focus=focus
+   if focus eq 1 then begin
+       ;** set up widgets (callback functions, values and uvalues)
+       ; label
+       widget_control, self.labelwid, set_value=self.title
+       ; set pipe step droplist
+       widget_control, self.drop_elem, $
+         set_uvalue={object:self, method:'input'}
+       ; set sum select droplist
+       widget_control, self.drop_dap, $
+         set_uvalue={object:self, method:'input'}
+       ; set frame select droplist
+       widget_control, self.drop_frame, $
+         set_uvalue={object:self, method:'input'}
+       widget_control, self.button_tv, $
+         set_uvalue={object:self, method:'input'}
+       self.dataman->callinfo,dapsel=(*self.daplist)[self.dap_sel]
+   endif
+   self->update
 endif
 end
 
@@ -380,9 +392,9 @@ end
 pro drip_anal_select::cleanup
 ; save elem_sel in configuration file
 if self.elem_pref ne '' then begin
-    common gui_config_info, guiconf
-    parname='DISPSEL_'+string(byte(self.disp->getdata(/disp_id)))
-    setpar,guiconf,parname,self.elem_pref
+   common gui_config_info, guiconf
+   parname='DISPSEL_'+string(byte(self.disp->getdata(/disp_id)))
+   setpar,guiconf,parname,self.elem_pref
 endif
 ; free all data
 ptr_free, self.dataraw
@@ -433,26 +445,25 @@ end
 pro drip_anal_select__define
 
 struct={drip_anal_select, $
-        dataman:obj_new(), $ ;dataman object
-        ; widgets
-        drop_dap:0L, $       ;dap droplist id
-        drop_elem:0L, $      ;step droplist id
-        drop_frame:0L, $     ;frame droplist id
-        button_tv:0L, $      ;button to call ATV
-        disp_draw:0L, $      ;id of display draw widget (for input events)
-        ; selections
-        dap_sel:0, $         ;dap droplist selection
-        elem_sel:0, $        ;step droplist selection
-        elem_pref:'', $      ;preferred element selection
-        frame_sel:0, $       ;frame droplist selection (starting with 0)
-        ; data variables
-        dapn:0, $            ; number of daps
-        daplist:ptr_new(), $ ; list of current dap names
-        elemn:0, $           ; number of available elements
-        elemlist:ptr_new(), $ ; names of displayable elements in pipe
-                             ;   both have 0,'none' as first selection
-        framen:0, $          ; number of frames, 0 or 1 for no frames
-        dataraw:ptr_new(), $ ; pointer to image (can be 3d)
-        inherits drip_anal}  ; child object of drip_anal
+       dataman:obj_new(), $ ;dataman object
+       ; widgets
+       drop_dap:0L, $       ;dap droplist id
+       drop_elem:0L, $      ;step droplist id
+       drop_frame:0L, $     ;frame droplist id
+       button_tv:0L, $      ;button to call ATV
+       disp_draw:0L, $      ;id of display draw widget (for input events)
+       ; selections
+       dap_sel:0, $         ;dap droplist selection
+       elem_sel:0, $        ;step droplist selection
+       elem_pref:'', $      ;preferred element selection
+       frame_sel:0, $       ;frame droplist selection (starting with 0)
+       ; data variables
+       dapn:0, $            ; number of daps
+       daplist:ptr_new(), $ ; list of current dap names
+       elemn:0, $           ; number of available elements
+       elemlist:ptr_new(), $ ; names of displayable elements in pipe
+                            ;   both have 0,'none' as first selection
+       framen:0, $          ; number of frames, 0 or 1 for no frames
+       dataraw:ptr_new(), $ ; pointer to image (can be 3d)
+       inherits drip_anal}  ; child object of drip_anal
 end
-

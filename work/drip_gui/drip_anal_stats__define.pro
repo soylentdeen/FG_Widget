@@ -56,7 +56,7 @@
 ;****************************************************************************
 
 pro drip_anal_stats::update
-
+common gui_os_dependent_values, largefont, smallfont
 ; check if in focus
 if self.focus or self.show then begin
     ; get data
@@ -86,22 +86,36 @@ if self.focus or self.show then begin
                          minimum=min,maximum=max
         med=median(img)
         npix=long(self.boxu1-self.boxu0+1)*long(self.boxv1-self.boxv0+1)
-        ; make format string
-        values=[mean,med,stddev,min,max]
-        format='('
-        for i=0,4 do begin
-            if values[i] lt 1e5 then format=format+'F9.2,' $
-              else if values[i] lt 1e8 then format=format+'F9.0,' $
-              else format=format+'E9.2,'
+                       
+        ;print,mean,med,stddev,min,max,npix
+        ;fix format for all
+        all = [ mean,med,stddev,min,max,npix ]
+        text = strarr(6)
+        for i= 0,5 do begin
+           x = all[i]
+           case 1 of
+              (abs(x) gt 999999) : fmt = '(e10.0)'
+              (abs(x) lt 0.1) : fmt = '(e10.1)'
+              else : fmt = '(f10.1)'
+           endcase
+           text[i]=string(x,format=fmt)
         endfor
-        format=format+'I6)'
-        ; display
-        text=string(mean,med,stddev,min,max,npix, $
-                    format=format)
         self.datatext=text
-        widget_control, self.datawid, set_value=text
+        print,text
+       
+        ;widget_control, self.datawid, get_value=preval
+        ;text=[[preval],[text]]
+        ;help,text
+        ;widget_control, self.datawid, set_value=text
+        for i=1,6 do begin
+           widget_control, self.datawid[i], set_value=text[i-1]
+        endfor
+        
     endif else begin ; we don't have data
-        widget_control, self.datawid, set_value='No Data in this Window'
+       g=string(findgen(6))
+        for i=1,6 do begin
+           widget_control, self.datawid[i], set_value=g[i-1]
+        endfor
     endelse
     widget_control, self.colorwid, set_value=self.color
 endif
@@ -403,7 +417,9 @@ widget_control, self.colorwid, $
                         set_uvalue={object:self, method:'input'}, $
                         set_value=self.color
 ; datawid
-widget_control, self.datawid, set_value=self.datatext
+for i=1,6 do begin
+   widget_control, self.datawid[i], set_value=self.datatext[i-1]
+endfor
 end
 
 ;****************************************************************************
@@ -448,7 +464,7 @@ self.analman=analman
 self.title=title
 self.wid=wid
 self.top=0
-self.datatext=''
+self.datatext=string(indgen(6))
 ; get display sizes
 xsize=disp->getdata(/xsize)
 ysize=disp->getdata(/ysize)
@@ -479,8 +495,8 @@ struct={drip_anal_stats, $
         showwid:0L, $       ; widget id for show button
         logwid:0L, $        ; widget id for log button
         colorwid:0L, $      ; widget id for color selector
-        datawid:0L, $       ; widget id for data display
-        datatext:'', $      ; text for data display
+        datawid:lonarr(7), $; widget id for data display
+        datatext:strarr(6),$; text for data display
         ; box characteristics
         boxu0:0, boxv0:0, $ ;box frame positions:   lower left corner
         boxu1:0, boxv1:0, $ ;(in image coordinates) upper right corner
