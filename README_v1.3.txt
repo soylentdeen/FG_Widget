@@ -5,9 +5,9 @@ This is yet another test
 
 FG_WIDGET v1.3 README
 
-Last Update: February 17 2010
+Last Update: March 16 2010
 Luke Keller (Ithaca College: lkeller@ithaca.edu)
-Casey Deen  (University of Texas, Austin)
+Casey Deen  (University of Texas, Austin: deen@astro.as.utexas.edu)
 
 INSTALLATION INSTRUCTIONS:
 
