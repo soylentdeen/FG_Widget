@@ -373,9 +373,10 @@ endif else begin
         (*self.darks)[*,*,*]=0.0
     endelse
 endelse
+
 ; read linearity correction coefficient files, DETCHAN = (0 for SWC, 1 for LWC)  ;LIN
-; ***************** LIN **********************
-det_chan=fix(drip_getpar(*self.basehead,'DETCHAN'),type=2)
+;det_chan=fix(drip_getpar(*self.basehead,'DETCHAN'),type=2)
+det_chan=fix(sxpar(*self.basehead,'DETCHAN'))
 print,'DETCHAN= ',det_chan
 if det_chan eq 0 then begin
     self.linfile=self.pathload+'SWC_linearity_coeff.fits'
@@ -392,7 +393,6 @@ endif else begin
     endelse
 endelse
 
-; ************ LIN **************
 ; read flat fields
 no_flat_data=0 ; 1 = 'No flat data found', 0 = 'flat data found'
 self.flatfile=drip_getpar(*self.basehead,'FLATFILE')
@@ -417,7 +417,7 @@ endif else begin
         drip_message, 'drip::getcal - Error Loading Flat Frames = ' + $
           self.flatfile
         *self.flats=fltarr(256,256)
-        (*self.flats)[*,*,*]=1.0
+        (*self.flats)[*,*]=1.0
         no_flat_data=1
     endelse
 endelse
@@ -436,10 +436,13 @@ drip_message,'drip::getcal - done cleaning flats'
 ;detected) to ignore inter-order pixels when calculating median values
 ;for the master flatfield image. If imaging mode, then used the entire
 ;array.
-filter=drip_getpar(*self.basehead,'FILT2_S')
+
+;filter=drip_getpar(*self.basehead,'FILT2_S')
+filter=sxpar(*self.basehead,'FILT2_S')
 if ((filter eq 'grism2') OR (filter eq 'grism4')) then begin
     ;get the order mask
-    fname=drip_getpar(*self.basehead,'MASKFILE')
+    ;fname=drip_getpar(*self.basehead,'MASKFILE')
+    fname=sxpar(*self.basehead,'MASKFILE')
     ordermask=readfits(self.pathload+fname)
 endif else begin
    ordermask=dblarr(256,256)+1
@@ -448,7 +451,10 @@ endelse
 ; MASTERFLAT IS DARK-SUBTRACTED
 ;Planes are: HOT (0), HOT (1), COLD (2), COLD (3)
 s=size(*self.cleanedflats)
-if s[0] eq 2 then master=(*self.cleanedflats-darksum)/median(*self.cleanedflats-darksum)
+if s[0] eq 2 then begin
+    flatdiff=*self.cleanedflats-*self.darksum
+    master=flatdiff/median(flatdiff[where(ordermask eq 1)])
+endif
 if s[0] eq 3 then begin
     CASE 1 of 
         (s[3] eq 4): begin  
@@ -460,23 +466,20 @@ if s[0] eq 3 then begin
           master=flatdiff/median(flatdiff[where(ordermask eq 1)]) ; normalize
           ;master[where(ordermask eq 0)]=1.
           end
-       (s[3] eq 2) OR (s[3] eq 3): begin
+       (s[3] eq 2) OR (s[3] eq 3) OR (s[3] gt 4): begin
           flatsum=total(*self.cleanedflats,3)
-          master=(flatsum-darksum)/median(flatsum-darksum) ; make masterflat: darksub and normalize
-          end
-       (s[3] gt 4): begin
-          flatsum=total(*self.cleanedflats,3)
-          master=(flatsum-darksum)/median(flatsum-darksum) ; make masterflat: darksub and normalize   
+          ; make masterflat: darksub and normalize
+          flatdiff=*self.cleanedflats-*self.darksum
+          master=flatdiff/median(flatdiff[where(ordermask eq 1)])
           end
     ENDCASE
 endif
 
-*self.masterflat=(master) ; This is the DARK-SUBTRACTED MASTERFLAT 
+*self.masterflat=master ; This is the DARK-SUBTRACTED MASTERFLAT 
 
-;apply non-linearity correction and call it 'masterflat'
-;*self.masterflat=(drip_nonlin(master, *self.lincor))
+;apply non-linearity correction...
 if no_flat_data eq 0 then *self.masterflat=(drip_nonlin(master, *self.lincor)) $
-else *self.masterflat=master   ; unless no flat data found
+else *self.masterflat=master   ; ...unless no flat data found
 ; set output file obs_id and pipe version
 obs_id=drip_getpar(*self.basehead,'OBS_ID')
 new_obs_id='P_'+obs_id
