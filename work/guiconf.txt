@@ -1,5 +1,5 @@
 GREETING = 'FORCAST DRIP Grism v1.3'
-LOADDATAPATH = '/Users/keller/Research/fg_widget_github/FG_Widget/work/DEMO_GRISM_DATA_v1.3/G1/'
+LOADDATAPATH = '/Users/keller/Research/fg_widget_github/FG_Widget/work/DEMO_GRISM_DATA_v1.3/G6/'
 SAVEPATH = '.'
 DISPSEL_A = 'Stacked'
 DISPSEL_B = 'Merged'

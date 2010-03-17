@@ -1,5 +1,5 @@
 ; NAME:
-;     STARE - Version .6.1
+;     STARE - Version .7.0
 ;
 ; PURPOSE:
 ;     Data Reduction Pipeline for stare mode
@@ -37,6 +37,8 @@
 ;     Modified:  Marc Berthoud, Palomar, June 2005
 ;                use lastcoadded to store first frame, which is background
 ;                -> coadded is always last image - background (first image)
+;     Modified:  Luke Keller, IC, January 2010
+;                Added non-linearity correction           
 ;
 
 ;******************************************************************************
@@ -47,16 +49,10 @@ pro stare::reduce
 
 ; clean
 *self.cleaned=drip_clean(*self.data,*self.badmap)
-;cleansum=total(*self.cleaned,3)
-;darksum=total(*self.cleaneddarks,3)
-;undarked=cleansum-darksum
-
-*self.cleaned=*self.cleaned-*self.masterflat
+;nonlin
+*self.linearized=drip_nonlin(*self.cleaned,*self.lincor)   ;LIN
 ; flat
-*self.flatted=drip_flat(*self.cleaned,*self.masterflat,*self.darksum)
-;*self.flatted=undarked/*self.masterflat
-
-; nonlin
+*self.flatted=drip_flat(*self.linearized,*self.masterflat,*self.darksum)
 ; stack
 if size(*self.flatted, /n_dimen) eq 3 then $
   *self.stacked=drip_stack(*self.flatted,*self.header) $

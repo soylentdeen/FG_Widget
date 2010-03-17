@@ -1,5 +1,5 @@
 ; NAME:
-;     DRIP_COADD - Version .6.1
+;     DRIP_COADD - Version .7.0
 ;
 ; PURPOSE:
 ;     Coadd new sequence to existing data
@@ -51,7 +51,7 @@ if s[0] ne 2 then begin
 endif
 cs=size(coadded)
 if cs[0] ne 2 then begin
-    drip_message, 'drip_coadd - invalid coadded array - using blank image'
+    drip_message, 'drip_coadd - invalid or no previous coadded array - using blank image'
     coadded=newdata
     coadded[*,*]=0.0
 endif
@@ -82,7 +82,7 @@ switch mode of
         basedec=float(drip_getpar(basehead,'TELDEC'))
         newra=15.0*float(drip_getpar(header,'TELRA'))
         newdec=float(drip_getpar(header,'TELDEC'))
-        avgdec=avg([basedec,newdec])
+        avgdec=(basedec+newdec)/2.0
         ; make correction for nodding
         if mode eq 'C2ND' then begin
             nodbeam=strtrim(drip_getpar(header,'NODBEAM'),2)
@@ -95,7 +95,8 @@ switch mode of
         raoff=(newra-basera)*cos(!pi/180.0*avgdec)
         decoff=newdec-basedec
         ; convert to seconds then pixels (remember 2x subsampled)
-        arcsecppix=0.43 ; palomar 2007
+        ;arcsecppix=0.43 ; palomar 2007
+        arcsecppix=0.75 ; for SOFIA
         raoff=2.0*3600.0*raoff/arcsecppix
         decoff=2.0*3600.0*decoff/arcsecppix
         ; shift image (raoff left, decoff up)

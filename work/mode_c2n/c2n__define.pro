@@ -1,5 +1,5 @@
 ; NAME:
-;     C2N - Version .6.1
+;     C2N - Version .7.0
 ;
 ; PURPOSE:
 ;     Data Reduction Pipeline for two position chop two position nod mode
@@ -67,7 +67,9 @@
 ;                Changed C2N object into a child object of the new
 ;                DRIP object (lots of code erased)
 ;     Modified:  Marc Berthoud, CU, March 2005
-;                Renamed to C2N
+;                Renamed to C2N               
+;     Modified   Luke Keller, IC, January 2010
+;                Added non-linearity correction
 ;
 
 ;******************************************************************************
@@ -78,9 +80,10 @@ pro c2n::reduce
 
 ; clean
 *self.cleaned=drip_clean(*self.data,*self.badmap)
-; flat
-*self.flatted=drip_flat(*self.cleaned,*self.masterflat)
 ; nonlin
+*self.linearized=drip_nonlin(*self.cleaned,*self.lincor)   ;LIN
+; flat
+*self.flatted=drip_flat(*self.linearized,*self.masterflat,*self.darksum)
 ; stack
 *self.stacked=drip_stack(*self.flatted,*self.header,posdata=*self.posdata, $
                          chopsub=*self.chopsub, nodsub=*self.nodsub)
@@ -102,7 +105,7 @@ o=''
 self.readme=['pipeline: 2 Position Chop ' + o + ' chip DRiP', $ ;info lines
   'file: ' + self.filename, $
   'final image: undistorted', $
-  'order: CLEAN, FLAT, STACK, UNDISTORT, MERGE, COADD', $
+  'order: CLEAN, NONLIN, FLAT, STACK, UNDISTORT, MERGE, COADD', $
   'notes: badmap from CLEAN, masterflat from FLAT']
 
 print,'C2N ' + o + ' chip FINISHED' ;info

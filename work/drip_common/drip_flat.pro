@@ -1,5 +1,5 @@
 ; NAME:
-;     DRIP_FLAT - Version .6.1
+;     DRIP_FLAT - Version .7.0
 ;                 (former flat__define)
 ;
 ; PURPOSE:
@@ -11,6 +11,7 @@
 ; INPUTS:
 ;	MASTERFLAT - The reduced flatfield master image
 ;	DATA - image array to be corrected
+;	DARKSUM - sum of dark frames for dark subtraction
 ;
 ; OUTPUTS:
 ;	FLATTED - Flatted image

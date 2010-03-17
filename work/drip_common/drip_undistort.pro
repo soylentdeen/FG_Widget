@@ -1,5 +1,5 @@
 ; NAME:
-;	DRIP_UNDISTORT - Version .6.1
+;	DRIP_UNDISTORT - Version .7.0
 ;
 ; PURPOSE:
 ;	Corrects distortion due to camera optics.
@@ -56,6 +56,7 @@ endif
 ; remap image into larger one (bottom left corner)
 datalg=fltarr(3*s[1],3*s[2])
 datalg[0:s[1]-1,0:s[2]-1]=data
+
 ;** setup arrays of points to be warped and fitted
 ; xi,yi - warped coor's, xo,yo - true coor's
 xi=[6,54,102,150,198,247,5,54,102,150,198,247,5, $
@@ -72,31 +73,42 @@ yo=[242,242,242,242,242,242,196,196,196,196,196,196, $
   60,60,60,60,60,60,15,15,15,15,15,15]
 ;** adjust final coordinates for roatated and scaled image
 ; get rotation angle
-baseangle=float(drip_getpar(basehead,'SKY_ANGL'))*!pi/180.0
-angle=float(drip_getpar(header,'SKY_ANGL'))*!pi/180.0
+baseangle=float(drip_getpar(basehead,'NODANGLE'))*!pi/180.0
+angle=float(drip_getpar(header,'NODANGLE'))*!pi/180.0
 ; create rotation matrix to rotate by angle around [s[1]/2-0.5,s[2]/2-0.5]
 ; use formula
 ;   x1 = xm - xm cosa - ym sina + x0 cosa + y0 sina
 ;   y1 = ym + xm sina - ym cosa - x0 sina + y0 cosa
+; xm,ym is center of array i.e. 127.5,127.5
 xm=float(s[1])/2.0-0.5
 ym=float(s[2])/2.0-0.5
 sina=sin(angle)
 cosa=cos(angle)
+; rotate xo, yo arround center(xm,ym) -> x1,y1
 x1=xm-xm*cosa+ym*sina+xo*cosa-yo*sina
 y1=ym-xm*sina-ym*cosa+xo*sina+yo*cosa
+
+;CHANGED for the DATA SIMULATOR
+;x1=xm-xm*cosa+ym*sina+xi*cosa-yi*sina
+;y1=ym-xm*sina-ym*cosa+xi*sina+yi*cosa
+
 ;p=[[xm-xm*cosa-ym*sina,sina],[cosa,0]] ; in case I need it with poly_2d
 ;q=[[ym+xm*sina-ym*cosa,cosa],[-sina,0]]
 ;rotated=poly_2d(undistorted,p,q,2, cubic=-.5, missing=0)
-; adjust final coordinates for larger image (i.e. move to middle)
+; adjust final coordinates for larger image (i.e. blow up and move to middle)
+; -> new value of xo,yo
 xo=x1*2.0+s[1]/2.0
 yo=y1*2.0+s[2]/2.0
 ; perform polynomial warping (3. degree)
 polywarp, xi, yi, xo, yo, 3, p, q
+
 ;print,'p: min=',min(p),' max=',max(p),' mean=',mean(p)
 ;print,p
 ;print,'q: min=',min(q),' max=',max(q),' mean=',mean(q)
 ;print,q
+
 undistorted=poly_2d(datalg, p, q, 2, cubic=-.5, missing=0)
+
 
 return, undistorted
 end

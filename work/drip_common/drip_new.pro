@@ -1,5 +1,5 @@
 ; NAME:
-;     DRIP_NEW - Version 6.1
+;     DRIP_NEW - Version 7.0
 ;
 ; PURPOSE:
 ;     Select and initialize correct drip object

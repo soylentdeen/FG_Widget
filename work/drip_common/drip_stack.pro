@@ -60,11 +60,8 @@ Nbufs=fix(drip_getpar(header,'OTNBUFS'))
 Nframes=s[3]
 ; add frames according to Ops Table MODE
 switch otmode of
-   for do begin
-
-   endfor
     ; 1: begin
-    'AD': begin
+    'AD': begin ; AD=All Destructive
         ; get number of positions
         Npos=fix(floor(float(Nframes)/float(Nstacks)+0.01))
         print,'Npos=',Npos

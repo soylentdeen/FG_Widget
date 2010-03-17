@@ -1,5 +1,5 @@
 ; NAME:
-;     DRIP_CLEAN - Version .6.1
+;     DRIP_CLEAN - Version .7.0
 ;                  (former clean__define)
 ;
 ; PURPOSE:
@@ -91,7 +91,7 @@ endif else begin
         ; get new sigma by eliminating really bad pixels
         ;badind=where((abs(datanow-datamed) gt sigfac*sig) or (badmap ne 0))
         ;if (size(badind))[0] gt 0 then begin
-        ;    datamed[badind]=datanow[badind]  
+        ;    datamed[badind]=datanow[badind]
         ;    sig=stdev(datanow-datamed)
         ;endif
         ;print,'  drip_clean: sig1=',sig

@@ -27,7 +27,7 @@ pro drip_message, msg, fatal=fatal
 ; get number of elements
 n=size(msg,/n_elements)
 common drip_config_info, dripconf, drip_errproc
-if total(size(drip_errproc)) eq 0 then begin
+if size(drip_errproc,/type) ne 8 then begin
     ; display decode fatal
     if keyword_set(fatal) then begin
         if n gt 1 then begin
