@@ -452,8 +452,9 @@ endelse
 ;Planes are: HOT (0), HOT (1), COLD (2), COLD (3)
 s=size(*self.cleanedflats)
 if s[0] eq 2 then begin
-    flatdiff=*self.cleanedflats-*self.darksum
+    flatdiff=*self.cleanedflats;    -*self.darksum
     master=flatdiff/median(flatdiff[where(ordermask eq 1)])
+    master[where(ordermask eq 0)]=1.
 endif
 if s[0] eq 3 then begin
     CASE 1 of 
@@ -464,27 +465,29 @@ if s[0] eq 3 then begin
           lflat=((*self.cleanedflats)[*,*,2]+(*self.cleanedflats)[*,*,3])/2
           flatdiff=hflat-lflat
           master=flatdiff/median(flatdiff[where(ordermask eq 1)]) ; normalize
-          ;master[where(ordermask eq 0)]=1.
+          if ((filter eq 'grism2') OR (filter eq 'grism4')) then master[where(ordermask eq 0)]=1.
           end
        (s[3] eq 2) OR (s[3] eq 3) OR (s[3] gt 4): begin
           flatsum=total(*self.cleanedflats,3)
           ; make masterflat: darksub and normalize
-          flatdiff=*self.cleanedflats-*self.darksum
+          flatdiff=flatsum    ;flatsum-*self.darksum
           master=flatdiff/median(flatdiff[where(ordermask eq 1)])
+          if ((filter eq 'grism2') OR (filter eq 'grism4')) then master[where(ordermask eq 0)]=1.
           end
     ENDCASE
 endif
+*self.masterflat=master
 
-*self.masterflat=master ; This is the DARK-SUBTRACTED MASTERFLAT 
+;apply non-linearity correction...                        LIN
+if no_flat_data eq 0 then *self.masterflat=(drip_nonlin(master, *self.lincor))
+;else *self.masterflat=master   ; ...unless no flat data found
 
-;apply non-linearity correction...
-if no_flat_data eq 0 then *self.masterflat=(drip_nonlin(master, *self.lincor)) $
-else *self.masterflat=master   ; ...unless no flat data found
 ; set output file obs_id and pipe version
 obs_id=drip_getpar(*self.basehead,'OBS_ID')
 new_obs_id='P_'+obs_id
 sxaddpar,*self.basehead,'OBS_ID',new_obs_id
 sxaddpar,*self.basehead,'PIPEVERS','Forcast_Drip_1.0'
+
 end
 
 ;****************************************************************************

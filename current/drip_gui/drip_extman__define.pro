@@ -2,12 +2,11 @@ pro drip_extman::setmap,mode
 ; mode - grism mode
 ;         0 - g1xg2
 ;         1 - g3xg4
-;         2 - g5xg6
 
 case mode of
     0:*self.map=[[164,214],[131,177],[100,144],[72,114],[47,88],[23,65],[0,42]]
     1:*self.map=[[217,176],[189,146],[158,115],[127,79],[96,47],[68,17]]
-    2:*self.map=[[217,176],[189,146],[158,115],[127,79],[96,47],[68,17]]
+;    2:*self.map=[[217,176],[189,146],[158,115],[127,79],[96,47],[68,17]]
 endcase
 
 self.orders=[4,(size(*self.map))[2] + 4 - 1]
@@ -47,7 +46,7 @@ for i=0,len-1 do begin
     if (i eq 0) then avg1=mean(extract)
     avg=mean(extract)
     davg=avg-avg1
-    print,avg1,avg,davg
+    ;print,avg1,avg,davg
     extract=extract-davg
     *self.allwave[i]=wave
     *self.allflux[i]=extract
@@ -71,7 +70,7 @@ if keyword_set(orders) then return, self.orders
 
 end
 ;******************************************************************************
-;     Covert Coordinates
+;     Convert Coordinates
 ;******************************************************************************
 
 pro drip_extman::convcoord
@@ -113,9 +112,9 @@ xvalue=round(findgen(self.boxx2-self.boxx0+1) + self.boxx0)
 
 yvalue=round(slope*(xvalue-self.boxx0))+self.boxy0
 
-print,'xend:',xvalue(n_elements(xvalue)-1),xvalue(0)
-print,'yend:',yvalue(n_elements(yvalue)-1),yvalue(0)
-print,'dy:',dy,self.boxy1,self.boxy2
+;print,'xend:',xvalue(n_elements(xvalue)-1),xvalue(0)
+;print,'yend:',yvalue(n_elements(yvalue)-1),yvalue(0)
+;print,'dy:',dy,self.boxy1,self.boxy2
 
 extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+dy)],2)
 for i= 1,(self.boxx2-self.boxx0) do begin
@@ -124,8 +123,8 @@ endfor
 
 *self.extract=extract
 
-print,'extman'
-help,*self.extract
+;print,'extman'
+;help,*self.extract
 end
 
 ;******************************************************************************

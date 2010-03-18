@@ -31,7 +31,7 @@
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Nirbhik Chitrakar, Ithaca College, December 2007
-;                  (based on drip_analman_stats)
+;                  (based on old drip_analman_stats)
 ;************************************************************************
 ;     Read/Write event
 ;************************************************************************
@@ -67,7 +67,7 @@ if keyword_set(*data) then begin
     case value of
         'G1xG2':mode=0
         'G3xG4':mode=1
-        'G5xG6':mode=2
+;        'G5xG6':mode=2
     endcase
     self.extman->multi_order,mode
     orders=self.extman->getdata(/orders)
@@ -529,14 +529,14 @@ saveps=widget_button(save, value='PostScript...',$
                               method:'rwevent', uval:'save ps'})
 ;extract buttons
 ext=widget_button(headwid,value='Extract',/menu)
-ext2=widget_button(ext, value='Extract', $
-                          uvalue={object:self, method:'extract'} )
+ext2=widget_button(ext, value='Extract Selection', $
+                          uvalue={object:self, method:'extract'})
 g1xg2=widget_button(ext, value='G1xG2',$
                          uvalue={object:self, method:'multi_order'})
 g3xg4=widget_button(ext, value='G3xG4',$
                          uvalue={object:self, method:'multi_order'})
-g5xg6=widget_button(ext, value='G5xG6',$
-                         uvalue={object:self, method:'multi_order'})
+;g5xg6=widget_button(ext, value='G5xG6',$
+;                         uvalue={object:self, method:'multi_order'})
 ;-- table
 table=widget_base(self.topwid, /row)
 ; label

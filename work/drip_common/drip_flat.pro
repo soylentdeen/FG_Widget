@@ -74,6 +74,7 @@ endif else begin
     for i=0,s[3]-1 do $
       flatted[*,*,i] = (data[*,*,i]-darksum)/masterflat
 endelse
+print,'FLAT TEST'
 return,flatted
 end
 

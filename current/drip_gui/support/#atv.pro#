@@ -44,7 +44,6 @@
 ;       atv_images: contains the internal copies of the display image
 ;       atv_color:  contains colormap vectors
 ;       atv_pdata:  contains plot and text annotation information
-;       atv_spectrum: contains information about extracted spectrum
 ;
 ; RESTRICTIONS:
 ;       Requires IDL version 6.0 or greater.
@@ -64,7 +63,7 @@
 ;       Written/maintained by Aaron J. Barth, with contributions by 
 ;       numerous others.  First released 17 December 1998.
 ;
-;       This version is 2.1, last modified 21 May 2009.
+;       This version is 2.0b4, last modified November 27 2007.
 ;  
 ;       For the most current version, revision history, instructions,
 ;       list of known bugs, and further information, go to:
@@ -72,7 +71,7 @@
 ; 
 ;-
 ;----------------------------------------------------------------------
-;        atv startup and initialization routines
+;        atv startup, initialization, and shutdown routines
 ;----------------------------------------------------------------------
 
 pro atv_initcommon
@@ -94,7 +93,7 @@ common atv_images, $
    pan_image
 
 state = {                   $
-        version: '2.1', $       ; version # of this release
+        version: '2.0b4', $     ; version # of this release
         head_ptr: ptr_new(), $  ; pointer to image header
         astr_ptr: ptr_new(), $  ; pointer to astrometry info structure
         firstimage: 1, $        ; is this the first image?
@@ -195,6 +194,8 @@ state = {                   $
         binsize: 0.0, $         ; binsize for histogram plots
         regionform_id: 0L, $    ; id of region form widget
         reg_ids_ptr: ptr_new(), $ ; ids for region form widget
+;        writeimage_ids_ptr: ptr_new(),$ ; ids for writeimage form widget
+;        writeformat: 'PNG', $   ; default format for WriteImage
         cursorpos: lonarr(2), $ ; cursor x,y for photometry & stats
         centerpos: fltarr(2), $ ; centered x,y for photometry
         cursorpos_id: 0L, $     ; id of cursorpos widget
@@ -205,15 +206,9 @@ state = {                   $
         outersky_id: 0L, $      ; id of outer sky widget
         magunits: 0, $          ; 0=counts, 1=magnitudes
         skytype: 0, $           ; 0=idlphot,1=median,2=no sky subtract
-        exptime: 1.0, $         ; exposure time for photometry
         photzpt: 25.0, $        ; magnitude zeropoint
-        photprint: 0, $         ; print phot results to file?
-        photprint_id: 0L, $     ; id of phot print button
-        photfile: 0L, $         ; file unit of phot file
-        photfilename: 'atvphot.dat', $ ; filename of phot file
         skyresult_id: 0L, $     ; id of sky widget
         photresult_id: 0L, $    ; id of photometry result widget
-        photerror_id: 0L, $,    ; id of photometry error widget
         fwhm_id: 0L, $          ; id of fwhm widget
         radplot_widget_id: 0L, $ ; id of radial profile widget
         radplot_window_id: 0L, $ ; id of radial profile window
@@ -222,9 +217,6 @@ state = {                   $
         showradplot_id: 0L, $   ; id of button to show/hide radplot
         photwarning_id: 0L, $   ; id of photometry warning widget
         photwarning: ' ', $     ; photometry warning text
-        photerrors: 0, $        ; calculate photometric errors?
-        ccdgain: 1.0, $         ; CCD gain
-        ccdrn: 0.0, $           ; read noise
         centerboxsize: 9L, $    ; centering box size
         aprad: 5.0, $           ; aperture photometry radius
         innersky: 10.0, $       ; inner sky radius
@@ -253,29 +245,6 @@ state = {                   $
         ispsformon: 0, $        ; is cmps_form running?
         newrefresh: 0, $        ; refresh since last blink?
         blinks: 0B, $           ; remembers which images are blinked
-        x_tracestep: 21L, $     ; extraction tracing step
-        x_tracestep_id: 0, $    ; widget id for tracestep
-        x_traceheight: 7L, $    ; extraction tracing height
-        x_traceheight_id: 0, $  ; widget id for trace height
-        x_xregion: [0L, 0L], $  ; extraction x region
-        x_xstart_id: 0, $       ; widget id for extraction x start
-        x_xend_id: 0, $         ; widget id for extraction x end
-        x_traceorder: 3, $      ; extraction trace fit order
-        x_traceorder_id: 0, $   ; widget id for extraction trace order 
-        x_xlower: -5, $         ; extraction lower bound
-        x_xlower_id: 0, $       ; widget id for extraction lower
-        x_xupper: 5, $          ; extraction upper bound
-        x_xupper_id: 0, $       ; widget id for extraction upper 
-        x_backsub: 1, $         ; background subtraction on?
-        x_back1: -25, $         ; extraction lower background 1
-        x_back2: -15, $         ; extraction lower background 2
-        x_back3: 15, $          ; extraction upper background 1
-        x_back4: 25, $          ; extraction upper background 2
-        x_back1_id: 0, $        ; widget id for lower background 1
-        x_back2_id: 0, $        ; widget id for lower background 2
-        x_back3_id: 0, $        ; widget id for upper background 1
-        x_back4_id: 0, $        ; widget id for upper background 2
-        x_fixed: 0, $           ; hold extraction parameters fixed?
         activator: 0, $         ; is "activator" mode on?
         delimiter: '/', $       ; filesystem level delimiter 
         default_align: 1, $     ; align next image by default?
@@ -303,6 +272,9 @@ pro atv_startup
 
 common atv_state
 common atv_color
+
+; common block atvcompileoptions is only used by my script to compile
+; a version of atv for the idl virtual machine.
 
 ; save the user color table and pmulti first
 tvlct, user_r, user_g, user_b, /get
@@ -365,7 +337,7 @@ atv_getwindow
 ; Define the widgets.  For the widgets that need to be modified later
 ; on, save their widget ids in state variables
 
-base = widget_base(title = 'ATV 2.1', $
+base = widget_base(title = 'atv', $
                    /column, /base_align_right, $
                    app_mbar = top_menu, $
                    uvalue = 'atv_base', $
@@ -385,8 +357,8 @@ top_menu_desc = [ $
                 {cw_pdmenu_s, 2, 'TIFF'}, $
                 {cw_pdmenu_s, 0, '--------------'}, $
                 {cw_pdmenu_s, 1, 'GetImage'}, $
-                {cw_pdmenu_s, 2, ' DSS'}, $
-;                {cw_pdmenu_s, 2, ' FIRST'}, $
+                {cw_pdmenu_s, 0, ' DSS'}, $
+                {cw_pdmenu_s, 2, ' FIRST'}, $
                 {cw_pdmenu_s, 0, '--------------'}, $
                 {cw_pdmenu_s, 2, 'Quit'}, $
                 {cw_pdmenu_s, 1, 'ColorMap'}, $ ; color menu
@@ -685,6 +657,66 @@ atv, fltarr(10,10)
 
 end
 
+;--------------------------------------------------------------------
+
+pro atv_shutdown, windowid
+
+; routine to kill the atv window(s) and clear variables to conserve
+; memory when quitting atv.  The windowid parameter is used when
+; atv_shutdown is called automatically by the xmanager, if atv is
+; killed by the window manager.
+
+common atv_images
+common atv_state
+common atv_color
+common atv_pdata
+
+
+; reset color table and pmulti to user values
+tvlct, user_r, user_g, user_b
+!p.multi = state.active_window_pmulti
+
+; Kill top-level base if it still exists
+if (xregistered ('atv')) then widget_control, state.base_id, /destroy
+
+; Destroy all pointers to plots and their heap variables: this runs
+; ptr_free on any existing plot pointers
+if (nplot GT 0) then begin
+    atverase, /norefresh
+endif
+
+if (size(state, /tname) EQ 'STRUCT') then begin
+    if (!d.name EQ state.graphicsdevice) then wdelete, state.pan_pixmap
+    if (ptr_valid(state.head_ptr)) then ptr_free, state.head_ptr
+    if (ptr_valid(state.astr_ptr)) then ptr_free, state.astr_ptr
+endif
+
+; Clean up saved variables in common blocks to conserve memory.
+; Previously this was done using delvarx, but since delvarx uses an
+; execute function, it's incompatible with IDL virtual machine.  So,
+; just set these variables to zero.
+
+plot_ptr=0
+maxplot=0
+main_image=0
+display_image=0
+scaled_image=0
+blink_image1=0
+blink_image2=0
+blink_image3=0
+unlink_image=0
+pan_image=0
+r_vector=0
+g_vector=0
+b_vector=0
+user_r=0
+user_g=0
+user_b=0
+state=0
+
+
+return    
+end
 
 ;--------------------------------------------------------------------
 ;                  main atv event loops
@@ -729,6 +761,7 @@ case event_name of
     end
     'WriteFits': atv_writefits
     'WritePS' : atv_writeps
+;    'WriteImage': atv_writeimage
     'PNG': atv_writeimage, 'png'
     'JPEG': atv_writeimage, 'jpg'
     'TIFF': atv_writeimage, 'tiff'
@@ -983,9 +1016,6 @@ if (event.type EQ 5) then begin
         'p': atv_apphot
         'i': atv_showstats
         'm': atv_changemode
-        'w': print, state.coord
-        'x': atvextract, /newcoord
-        'e': atverase
         '!': begin  
             atv_setwindow, state.draw_window_id
             blink_image1 = tvrd(true = true) 
@@ -1035,8 +1065,7 @@ pro atv_activate
 ; atv to become active again without typing "retall" and losing your
 ; current session variables, type "atv_activate" to temporarily
 ; activate atv again.  This will de-activate the command line but
-; allow atv to be used until you hit "q" in atv or kill the atv
-; window. 
+; allow atv to be used until you hit "q" or click "done" in atv.
 
 ; Also, if you need to call atv from a command-line idl program and
 ; have that program wait until you're done looking at an image in atv
@@ -1484,8 +1513,8 @@ case uvalue of
 
     'fullview': atv_fullview
 
-;    'done':  if (state.activator EQ 0) then atv_shutdown $
-;      else state.activator = 0
+    'done':  if (state.activator EQ 0) then atv_shutdown $
+      else state.activator = 0
 
     else:  print, 'No match for uvalue....'  ; bad news if this happens
 
@@ -2041,8 +2070,6 @@ if (state.min_value GE state.max_value) then begin
     state.max_value = state.max_value + 1
 endif
 
-state.asinh_beta = state.skysig
-
 atv_set_minmax
 
 end  
@@ -2341,8 +2368,14 @@ box_y = float((([view_min[1], $
                  view_min[1]]) * state.pan_scale) + state.pan_offset[1]) 
 
 ; set limits on box to make sure all sides always appear
-box_x = 0 > box_x < (state.pan_window_size - 1)
-box_y = 0 > box_y < (state.pan_window_size - 1)
+w = where(box_x LT 0, count)
+if (count GT 0) then box_x[w] = 0
+w = where(box_y LT 0, count)
+if (count GT 0) then box_y[w] = 0
+w = where(box_x GT state.pan_window_size-1, count)
+if (count GT 0) then box_x[w] = state.pan_window_size-1
+w = where(box_y GT state.pan_window_size-1, count)
+if (count GT 0) then box_y[w] = state.pan_window_size-1
 
 ; Redraw the pan image and overplot the box
 if (not(keyword_set(norefresh))) then $
@@ -2424,6 +2457,7 @@ common atv_images
 
 ; Since this can take some time for a big image, set the cursor 
 ; to an hourglass until control returns to the event loop.
+
 widget_control, /hourglass
 
 scaled_image=0
@@ -2454,7 +2488,7 @@ case state.scaling of
                         maxv = state.max_value), $
              /nan, top = state.ncolors - 1) + 8
     
-    3:  begin                            ; asinh
+    3:  begin
         scaled_image = bytscl(asinh((main_image - state.min_value) $
                                     / state.asinh_beta), $
                 min = 0, $
@@ -2540,7 +2574,7 @@ if (skysig LE 0.0) then skysig = 1.0
 
 state.skymode = skymode
 state.skysig = skysig
-;state.asinh_beta = state.skysig
+state.asinh_beta = state.skysig
 
 if (state.min_value GE state.max_value) then begin
     state.min_value = state.min_value - 1
@@ -2775,7 +2809,7 @@ if (n_elements(fitsfilename) EQ 0) then window = 1 else window = 0
 
 
 ; Added list of filters for SDSS suffixes, etc.
-filterlist = ['*.fits;*.fit;*.fit.gz;*.fits.gz;*.FIT;*.FITS;*.ftz;*.FTZ;*.fts;*.ccd']
+filterlist = ['*.fits;*.fit;*.fit.gz;*.fits.gz;*.FIT;*.FITS;*.ftz;*.FTZ;*.ccd']
 
 ; If fitsfilename hasn't been passed to this routine, get filename
 ; from dialog_pickfile.
@@ -3114,11 +3148,6 @@ pro atv_getfirst
 common atv_state
 common atv_images
 
-; This feature is currently disabled in the top-level menu.  FIRST
-; changed their image server to send out images as "chunked" data
-; and webget.pro can't read chunked HTTP files.  If webget ever
-; adds support for chunked data then we can turn this back on again.
-
 formdesc = ['0, text, , label_left=Object Name: , width=15, tag=objname', $
             '0, button, NED|SIMBAD, set_value=0, label_left=Object Lookup:, exclusive, tag=lookupsource', $
             '0, label, Or enter J2000 Coordinates:, CENTER', $
@@ -3206,14 +3235,15 @@ endelse
 
 url = 'http://third.ucllnl.org/cgi-bin/firstimage'
 url = strcompress(url + '?RA=' + rahour + '%20' + ramin + '%20' + rasec, $
-                 /remove_all)
-url = strcompress(url + '%20' + decdeg + '%20' + decmin + '%20' + $
-                  decsec + '&Dec=', /remove_all)
+                  /remove_all)
+url = strcompress(url + '&Dec=' + decdeg + '%20' + decmin + '%20' + $
+                  decsec, /remove_all)
 url = strcompress(url + '&Equinox=J2000&ImageSize=' + imsize + $
-                  'MaxInt=10&FITS=1&Download=1', /remove_all)
+                  '&MaxInt=10&FITS=1&Download=1', /remove_all)
 
 ; now use webget to get the image
 result = webget(url)
+
 
 if (n_elements(result.image) LE 1) then begin
     atv_message, result.text, msgtype='error', /window
@@ -3281,11 +3311,10 @@ common atv_images
 
 filename = dialog_pickfile(filter = '*.fits', $ 
                            file = 'atv.fits', $
-                           default_extension = '.fits', $
                            dialog_parent =  state.base_id, $
                            path = state.current_dir, $
                            get_path = tmp_dir, $
-                           /write, /overwrite_prompt)
+                           /write)
 
 if (tmp_dir NE '') then state.current_dir = tmp_dir
 
@@ -3295,6 +3324,23 @@ if (filename EQ state.current_dir) then begin
   atv_message, 'Must indicate filename to save.', msgtype = 'error', /window
   return
 endif
+
+
+tmp_result = findfile(filename, count = nfiles)
+
+result = ''
+if (nfiles GT 0) then begin
+    mesg = strarr(2)
+    mesg[0] = 'Overwrite existing file:'
+    mesg[1] = strcompress(filename + '?', /remove_all)
+    result =  dialog_message(mesg, $
+                             /default_no, $
+                             dialog_parent = state.base_id, $
+                             /question)                 
+endif
+
+
+if (strupcase(result) EQ 'NO') then return
 
 if (ptr_valid(state.head_ptr)) then begin
   writefits, filename, main_image, (*state.head_ptr) 
@@ -3319,13 +3365,28 @@ filename = dialog_pickfile(file = tmpfilename, $
                            dialog_parent = state.base_id, $
                            path = state.current_dir, $
                            get_path = tmp_dir, $
-                           /write, /overwrite_prompt)
+                           /write)
 if (tmp_dir NE '') then state.current_dir = tmp_dir
 if (strcompress(filename, /remove_all) EQ '') then return   ; cancel
 if (filename EQ state.current_dir) then begin
   atv_message, 'Must indicate filename to save.', msgtype = 'error', /window
   return
 endif
+
+; check for pre-existing file
+tmp_result = findfile(filename, count = nfiles)
+result = ''
+if (nfiles GT 0) then begin
+   mesg = strarr(2)
+   mesg[0] = 'Overwrite existing file:'
+   mesg[1] = strcompress(filename + '?', /remove_all)
+   result =  dialog_message(mesg, $
+                            /default_no, $
+                            dialog_parent = state.base_id, $
+                            /question)                 
+endif
+
+if (strupcase(result) EQ 'NO') then return
 
 ; From here down this routine is based on Liam E. Gumley's SAVEIMAGE
 ; program, modified for use with ATV.
@@ -3664,6 +3725,10 @@ endif else begin
     endelse
 endelse
 
+;old version
+;x = state.brightness*(state.ncolors-1)
+;y = state.contrast*(state.ncolors-1) > 2 ; Minor change by AJB 
+
 high = x+y & low = x-y
 diff = (high-low) > 1
 
@@ -3892,28 +3957,15 @@ sizestring = strcompress('(' + string(state.image_size[0]) + 'x' + $
 state.title_extras = strcompress(state.title_extras + '  ' + sizestring)
 
 if (state.imagename EQ '') then begin
-   title = strcompress('atv: ' + state.title_extras)
-   widget_control, state.base_id, tlb_set_title = title
-   
+    title = strcompress('atv: ' + state.title_extras)
+    widget_control, state.base_id, tlb_set_title = title
+
 endif else begin
-   ; try to get the object name from the header
-   title_object = sxpar(*(state.head_ptr), 'OBJECT')
-
-   if (strcompress(string(title_object), /remove_all) EQ '0') then $
-      title_object = sxpar(*(state.head_ptr), 'TARGNAME')
-
-   if (strcompress(string(title_object), /remove_all) EQ '0') then $
-      title_object = ''
-
-   slash = strpos(state.imagename, state.delimiter, /reverse_search)
-   if (slash NE -1) then name = strmid(state.imagename, slash+1) $
-   else name = state.imagename
-   title = strcompress('atv:  '+ name + '  ' + state.title_extras)
-   
-   if (title_object NE '') then  $
-      title = strcompress(title + ': ' + title_object)
-   
-   widget_control, state.base_id, tlb_set_title = title
+    slash = strpos(state.imagename, state.delimiter, /reverse_search)
+    if (slash NE -1) then name = strmid(state.imagename, slash+1) $
+      else name = state.imagename
+    title = strcompress('atv:  '+ name + '  ' + state.title_extras)
+    widget_control, state.base_id, tlb_set_title = title
 endelse
 
 
@@ -3957,16 +4009,6 @@ endif
 
 ptr_free, state.head_ptr
 state.head_ptr = ptr_new(head)
-
-; get exposure time for photometry, if present, otherwise set to 1s
-state.exptime = float(sxpar(head, 'EXPTIME'))
-if (state.exptime LE 0.0) then state.exptime = 1.0
-
-; try to get gain and readnoise from header?
-;state.ccdgain = float(sxpar(head, 'GAIN'))
-;if (state.ccdgain LE 0.0) then state.ccdgain = 1.0
-;state.ccdrn = float(sxpar(head, 'RDNOISE'))
-;if (state.ccdrn LE 0.0) then state.ccdrn = 0.0
 
 ; Get astrometry information from header, if it exists
 ptr_free, state.astr_ptr        ; kill previous astrometry info
@@ -6798,7 +6840,6 @@ case uvalue of
             'histplot': atv_histplot
             'surfplot': atv_surfplot
             'contourplot': atv_contourplot
-            'specplot': atv_specplot
         endcase
     end
 
@@ -6815,7 +6856,6 @@ case uvalue of
             'histplot': atv_histplot, /fullrange
             'surfplot': atv_surfplot, /fullrange
             'contourplot': atv_contourplot, /fullrange
-            'specplot': atv_specplot, /fullrange
             else:
         endcase
     end
@@ -6864,7 +6904,6 @@ case uvalue of
             'histplot': atv_histplot, /ps
             'surfplot': atv_surfplot, /ps
             'contourplot': atv_contourplot, /ps
-            'specplot': atv_specplot, /ps
             else:
         endcase
         
@@ -6916,7 +6955,6 @@ case uvalue of
             'vectorplot': atv_vectorplot
             'surfplot': atv_surfplot
             'contourplot': atv_contourplot
-            'specplot': atv_specplot
             
             'histplot': begin
 
@@ -6986,7 +7024,7 @@ end
 pro atv_help
 common atv_state
 
-h = strarr(125)
+h = strarr(122)
 i = 0
 h[i] =  'ATV HELP'
 i = i + 1
@@ -7133,11 +7171,7 @@ h[i] = '    p: aperture photometry at current position'
 i = i + 1
 h[i] = '    i: image statistics at current position'
 i = i + 1
-h[i] = '    x: extract spectrum at current position'
-i = i + 1
 h[i] = '    m: cycles through mouse modes'
-i = i + 1
-h[i] = '    e: erase all overplots'
 i = i + 1
 h[i] = '    Shift-1,2,3:  sets blink buffer 1, 2, or 3'
 i = i + 1
@@ -7958,7 +7992,7 @@ if (finite(mean(subimg)) EQ 0) then begin
 endif
 
     
-phpadu = state.ccdgain
+phpadu = 1.0                    ; don't convert counts to electrons
 apr = [state.aprad]
 skyrad = [state.innersky, state.outersky]
 ; Assume that all pixel values are good data
@@ -7999,14 +8033,13 @@ endif
 ; Do the photometry now
 case state.skytype of
     0: aper, main_image, [x], [y], flux, errap, sky, skyerr, phpadu, apr, $
-             skyrad, badpix, flux=abs(state.magunits-1), /silent, $
-             readnoise = state.ccdrn
+      skyrad, badpix, flux=abs(state.magunits-1), /silent
     1: aper, main_image, [x], [y], flux, errap, sky, skyerr, phpadu, apr, $
-             skyrad, badpix, flux=abs(state.magunits-1), /silent, $
-             setskyval = skyval, readnoise = state.ccdrn
+      skyrad, badpix, flux=abs(state.magunits-1), /silent, $
+      setskyval = skyval
     2: aper, main_image, [x], [y], flux, errap, sky, skyerr, phpadu, apr, $
-             skyrad, badpix, flux=abs(state.magunits-1), /silent, $
-             setskyval = 0, readnoise = state.ccdrn
+      skyrad, badpix, flux=abs(state.magunits-1), /silent, $
+      setskyval = 0
 endcase
 
 flux = flux[0]
@@ -8018,11 +8051,11 @@ if (flux EQ 99.999) then begin
 endif
 
 if (state.magunits EQ 1) then begin    ; apply zeropoint
-    flux = flux + state.photzpt - 25.0 + (2.5 * alog10(state.exptime))
+    flux = flux + state.photzpt - 25.0
 endif
 
-
 ; Run atv_radplotf and plot the results
+
 atv_setwindow, state.radplot_window_id
 atv_radplotf, x, y, fwhm
 
@@ -8052,24 +8085,13 @@ xyouts, /data, state.innersky + (0.1*(state.outersky-state.innersky)), $
 
 atv_resetwindow
 
-; write results to file if requested  
-if (state.photprint EQ 1) then begin
-   openw, state.photfile, state.photfilename, /append
-   if (state.photerrors EQ 0) then errap = 0.0
-   formatstring = '(2(f7.1," "),3(f5.1," "),3(g12.6," "),f5.2)'
-   printf, state.photfile, x, y, state.aprad, $
-           state.innersky, state.outersky, sky, flux, errap, fwhm, $
-           format = formatstring
-   close, state.photfile
-endif
-
 ; output the results
 
 case state.magunits of
     0: fluxstr = 'Object counts: '
     1: fluxstr = 'Magnitude: '
 endcase
-
+  
 state.centerpos = [x, y]
 
 tmp_string = string(state.cursorpos[0], state.cursorpos[1], $
@@ -8079,12 +8101,6 @@ tmp_string1 = string(state.centerpos[0], state.centerpos[1], $
 tmp_string2 = strcompress(fluxstr+string(flux, format = '(g12.6)' ))
 tmp_string3 = string(sky, format = '("Sky level: ",g12.6)' )
 tmp_string4 = string(fwhm, format='("FWHM (pix): ",g7.3)' )
-
-if (state.photerrors EQ 0) then begin
-   errstring = 'Photometric error: N/A'
-endif else begin
-   errstring = strcompress('Uncertainty: '+string(errap, format = '(g12.6)' ))
-endelse
 
 widget_control, state.centerbox_id, set_value = state.centerboxsize
 widget_control, state.cursorpos_id, set_value = tmp_string
@@ -8096,7 +8112,6 @@ widget_control, state.skyresult_id, set_value = tmp_string3
 widget_control, state.photresult_id, set_value = tmp_string2
 widget_control, state.fwhm_id, set_value = tmp_string4
 widget_control, state.photwarning_id, set_value=state.photwarning
-widget_control, state.photerror_id, set_value = errstring
 
 ; Uncomment next lines if you want atv to output the WCS coords of 
 ; the centroid for the photometry object:
@@ -8210,7 +8225,6 @@ common atv_images
 
 widget_control, event.id, get_uvalue = uvalue
 
-
 case uvalue of
 
     'centerbox': begin
@@ -8245,68 +8259,28 @@ case uvalue of
 
     'showradplot': begin
         widget_control, state.showradplot_id, get_value=val
-
         case val of
-            'Show radial profile': begin
+            'Show Radial Profile': begin
                 ysize = 350 < (state.screen_ysize - 350)
                 widget_control, state.radplot_widget_id, $
                   xsize=500, ysize=ysize
                 widget_control, state.showradplot_id, $
-                  set_value='Hide radial profile'
+                  set_value='Hide Radial Profile'
             end
-            'Hide radial profile': begin
+            'Hide Radial Profile': begin
                 widget_control, state.radplot_widget_id, $
                   xsize=1, ysize=1
                 widget_control, state.showradplot_id, $
-                  set_value='Show radial profile'
+                  set_value='Show Radial Profile'
              end
          endcase
          atv_apphot_refresh
     end
 
-    'photprint': begin
-       if (state.photprint EQ 0) then begin
-          
-          photfilename = dialog_pickfile(file = state.photfilename, $
-                                         dialog_parent =  state.base_id, $
-                                         path = state.current_dir, $
-                                         get_path = tmp_dir, $
-                                         /write)
-          
-          if (photfilename EQ '') then return
-
-          ; write header to output file
-          openw, photfile, photfilename, /get_lun, /append
-          state.photfile = photfile
-
-          if (state.magunits EQ 0) then begin
-             photstring1 = '   x        y      r  insky outsky      sky         counts        err     fwhm'
-          endif else begin
-             photstring1 = '   x        y      r  insky outsky      sky          mag          err     fwhm'
-          endelse
-          photstring2 = '------------------------------------------------------------------------------'
-          printf, state.photfile, ' '
-          printf, state.photfile, photstring1
-          printf, state.photfile, photstring2
-          printf, state.photfile, ' '
-          close, state.photfile
-
-          state.photprint = 1
-          widget_control, state.photprint_id, $
-                          set_value = 'Close photometry file'
-
-       endif else begin
-          free_lun, state.photfile
-          state.photprint = 0
-          widget_control, state.photprint_id, $
-                          set_value = 'Write results to file...'   
-       endelse
-    end 
-
-;    'magunits': begin
-;        state.magunits = event.value
-;        atv_apphot_refresh
-;    end
+    'magunits': begin
+        state.magunits = event.value
+        atv_apphot_refresh
+    end
 
     'photsettings': atv_apphot_settings
 
@@ -8324,7 +8298,7 @@ pro atv_apphot_settings
 
 common atv_state
 
-skyline = strcompress('0, button, IDLPhot Sky Mode|Median Sky|No Sky Subtraction,'+$
+skyline = strcompress('0, button, IDLPhot Sky|Median Sky|No Sky Subtraction,'+$
                       'exclusive,' + $
                       'label_left=Select Sky Algorithm: , set_value = ' + $
                       string(state.skytype))
@@ -8337,59 +8311,21 @@ zptline = strcompress('0, float,'+string(state.photzpt) + $
                       ',label_left = Magnitude Zeropoint:,' + $
                       'width = 12')
 
-exptimeline = strcompress('0, float,'+string(state.exptime) + $
-                      ',label_left = Exposure Time (s):,' + $
-                      'width = 12')
-
-errline = strcompress('0, button, No|Yes, exclusive,' + $
-                      'label_left = Calculate photometric errors? ,' + $
-                      'set_value =' + $
-                      string(state.photerrors))
-
-gainline = strcompress('0, float,'+string(state.ccdgain) + $
-                      ',label_left = CCD Gain (e-/DN):,' + $
-                      'width = 12')
-
-rnline = strcompress('0, float,'+string(state.ccdrn) + $
-                      ',label_left = Readout Noise (e-):,' + $
-                      'width = 12')
-warningline1 = $
-   strcompress('0, label, ' + $
-               'WARNING: Photometric errors only make sense if the, left')
-warningline2 = $
-   strcompress('0, label, ' + $
-               'gain and readnoise are given correctly, left ')
-warningline3 = $
-   strcompress('0, label, ' + $
-               'accounting for scaling or co-adding of images., left')
-warningline4 = $
-   strcompress('0, label, ' + $
-               '   , left')
-
 formdesc = [skyline, $
             magline, $
             zptline, $
-            exptimeline, $
-            '0, label, [ Magnitude = -2.5 log (DN / exptime) + ZPT ]', $
-            errline, gainline, rnline, $
-            warningline1, warningline2, warningline3, warningline4, $
+            '0, label, [Magnitude = zeropoint - 2.5 log (counts)]', $
             '0, button, Apply Settings, quit', $
             '0, button, Cancel, quit']
 
 textform = cw_form(formdesc, /column, $
                    title = 'atv photometry settings')
 
-if (textform.tag13 EQ 1) then return ; cancelled
+if (textform.tag5 EQ 1) then return ; cancelled
 
 state.skytype = textform.tag0
 state.magunits = textform.tag1
 state.photzpt = textform.tag2
-state.exptime = textform.tag3
-state.photerrors = textform.tag5
-state.ccdgain = (1.e-5) > textform.tag6
-state.ccdrn = 0 > textform.tag7
-
-if (state.exptime LE 0) then state.exptime = 1.0
 
 atv_apphot_refresh
 
@@ -8506,14 +8442,6 @@ if (not (xregistered('atv_apphot', /noshow))) then begin
                    uvalue = 'photresult', $
                    /frame)
 
-    tmp_string2 = '                           '
-
-    state.photerror_id = $
-      widget_label(apphot_data_base2, $
-                   value = tmp_string2, $
-                   uvalue = 'photerror', $
-                   /frame)
-
     state.photwarning_id = $
       widget_label(apphot_data_base1, $
                    value='-------------------------', $
@@ -8522,23 +8450,12 @@ if (not (xregistered('atv_apphot', /noshow))) then begin
 
     photsettings_id = $
       widget_button(apphot_data_base1, $
-                    value = 'Photometry settings...', $
+                    value = 'Photometry Settings...', $
                     uvalue = 'photsettings')
-
-    if (state.photprint EQ 0) then begin
-       photstring = 'Write results to file...'
-    endif else begin
-       photstring = 'Close photometry file'
-    endelse
-    
-    state.photprint_id = $
-       widget_button(apphot_data_base1, $
-                     value = photstring, $
-                     uvalue = 'photprint')
 
     state.showradplot_id = $
       widget_button(apphot_data_base1, $
-                    value = 'Show radial profile', $
+                    value = 'Show Radial Profile', $
                     uvalue = 'showradplot')
     
     state.radplot_widget_id = widget_draw( $
@@ -8564,826 +8481,6 @@ endif
 atv_apphot_refresh
 
 end
-
-;--------------------------------------------------------------------
-;    Spectral extraction routines
-;---------------------------------------------------------------------
-
-function atv_get_tracepoint, yslice, traceguess
-
-common atv_state
-
-; find the trace points by simple centroiding after subtracting off
-; the background level.  iterate up to maxrep times to fine-tune the
-; centroid position.
-
-ysize = n_elements(yslice)
-yvec = indgen(ysize)
-
-icounter = 0L
-ycen = traceguess
-maxrep = 10
-; convergence criterion for accepting centroid: change in pixels from
-; previous iteration smaller than mindelta
-mindelta = 0.2    
-
-repeat begin
-   lastycen = ycen
-   icounter = icounter + 1
-
-   ylow = round(lastycen - (state.x_traceheight / 2.)) > 0
-   yhigh = round(lastycen + (state.x_traceheight / 2.)) < (ysize-1)
-  
-   smallslice = yslice[ylow:yhigh]   
-   minyslice = min(smallslice)
-   smallslice = smallslice - minyslice
-
-   ycen = total( float((yvec * (yslice - minyslice))[ylow:yhigh])) / $
-          float(total(smallslice))
-
-   ; check for major failures from pathological images
-   if (finite(ycen) EQ 0) then ycen = lastycen
-
-   deltat = ycen - lastycen
-
-endrep until ((abs(deltat) LT mindelta) OR (icounter GE maxrep))
-
-; check again for major failures
-if (ycen LT ylow OR ycen GT yhigh) then ycen = traceguess
-if (finite(ycen) EQ 0) then ycen = traceguess
-
-return, ycen
-
-end
-
-;-----------------------------------------------------------------
-
-pro atv_trace, newcoord
-
-common atv_state
-common atv_images
-common atv_spectrum, traceinit, tracecenters, tracepoints, $
-   xspec, fulltrace, spectrum
-
-if (keyword_set(newcoord) AND state.x_fixed EQ 0) then begin
-; get new starting position from cursor
-   xstart = state.x_tracestep > state.coord[0] < $
-            (state.image_size[0] - state.x_tracestep)
-   traceguess = ((state.x_traceheight / 2.)) > state.coord[1] < $
-                (state.image_size[1] - (state.x_traceheight / 2.))
-   traceinit = [xstart, traceguess]
-
-;   if (state.x_xregion[1] GT (state.image_size[0]-1)) then $
-   state.x_xregion = [0, state.image_size[0]-1]
-
-   widget_control, state.x_xstart_id, $
-                   set_value = state.x_xregion[0]
-   widget_control, state.x_xend_id, $
-                   set_value = state.x_xregion[1]
-
-endif else begin
-   xstart = traceinit[0]
-   traceguess = traceinit[1]
-endelse
-
-xsize = state.x_xregion[1] - state.x_xregion[0] + 1
-ysize = state.image_size[1]
-
-twidth = fix(state.x_tracestep / 2)
-ntracepoints = fix(xsize / state.x_tracestep)
-tracecenters = lindgen(ntracepoints) * state.x_tracestep + $
-  fix(state.x_tracestep/2) + state.x_xregion[0]
-tracepoints = fltarr(ntracepoints)
-
-; find the array element closest to the starting guess point
-m = min(abs(tracecenters-xstart), midtracepoint)
-
-; peak up on the first trace point
-xtracestart = xstart - twidth
-xtraceend = xstart + twidth
-tracecutout = main_image[xtracestart:xtraceend, *]
-
-ymin = 1 > (traceguess - (state.x_traceheight / 2.))
-ymax = (traceguess + (state.x_traceheight / 2.)) < (ysize - 2)
-yslice = (total(tracecutout,1))[ymin:ymax]
-w = where(yslice EQ max(yslice), count)
-if (count EQ 1) then traceguess = traceguess - (state.x_traceheight/2.) + w
-
-; trace from initial guess point to higher x
-for i = midtracepoint, ntracepoints-1 do begin
-   xtracestart = tracecenters[i] - twidth
-   xtraceend = tracecenters[i] + twidth
-   
-   tracecutout = main_image[xtracestart:xtraceend, *]
-   yslice = total(tracecutout,1)
-   
-   ; replace NaNs when tracing to avert disaster
-   w = where(finite(yslice) EQ 0, count)
-   if (count GT 0) then yslice[w] = 0
-
-   if (min(yslice) EQ max(yslice)) then begin
-   ; if slice is blank, don't try to trace-- i.e. STIS image edges
-      tracepoints[i] = traceguess
-      ycen = traceguess
-   endif else begin
-      ycen = atv_get_tracepoint(yslice, traceguess)
-      tracepoints[i] = ycen
-   endelse
-   
-   ; set next guess, accounting for local slope of trace
-   if (i EQ midtracepoint) then begin
-      traceguess = ycen
-   endif else begin
-      traceguess = 1 > (ycen + (tracepoints[i] - tracepoints[i-1])/2) < $
-                   (ysize-1)
-   endelse
-   if (finite(traceguess) EQ 0) then traceguess = tracepoints[i-1]
-
-
-endfor
-
-traceguess = tracepoints[midtracepoint]
-
-; now trace from initial guess point to lower x
-for i = midtracepoint-1, 0, -1 do begin
-   xtracestart = tracecenters[i] - twidth
-   xtraceend = tracecenters[i] + twidth
-   
-   tracecutout = main_image[xtracestart:xtraceend, *]
-   yslice = total(tracecutout,1)
-   
-   w = where(finite(yslice) EQ 0, count)
-   if (count GT 0) then yslice[w] = 0
-
-   if (min(yslice) EQ max(yslice)) then begin
-      tracepoints[i] = traceguess
-      ycen = traceguess
-   endif else begin
-      ycen = atv_get_tracepoint(yslice, traceguess)
-      tracepoints[i] = ycen
-   endelse
-   
-   traceguess = 1 > (ycen - (tracepoints[i+1] - tracepoints[i])/2) < $
-                (ysize-1)
-   if (finite(traceguess) EQ 0) then traceguess = tracepoints[i+1]
-
-endfor
-
-result = poly_fit(double(tracecenters), tracepoints, $
-                  state.x_traceorder, yfit, /double)
-
-xspec = lindgen(xsize) + state.x_xregion[0]
-fulltrace = dblarr(xsize) 
-for i = 0, state.x_traceorder do begin
-    fulltrace = fulltrace + (result[i] * (double(xspec))^i)
-endfor
-
-
-end
-
-;------------------------------------------------------------------
-
-pro atvextract, newcoord=newcoord
-
-common atv_state
-common atv_images
-common atv_spectrum
-
-
-if (state.image_size[0] LT 50) OR (state.image_size[1]) LT 20 $
-   then return
-
-if (not (xregistered('atv_extract', /noshow))) then atvextract_init
-
-atverase
-
-if (state.x_traceheight GT state.image_size[1]) then begin
-   state.x_traceheight = state.image_size[1]
-   widget_control, state.x_traceheight_id, set_value = state.x_traceheight
-endif
-
-if (state.x_fixed EQ 0) then atv_trace, newcoord
-
-atvplot, tracecenters, tracepoints, psym=1
-atvplot, xspec, fulltrace, color=3
-
-xsize = state.x_xregion[1] - state.x_xregion[0] + 1
-ysize = state.image_size[1]
-
-nxpoints = state.x_xupper - state.x_xlower
-
-spectrum = dblarr(xsize)
-
-for i = xspec[0], max(xspec) do begin
-
-   j = i - xspec[0]
-   ; error check to see if spectrum runs off the top or bottom of image
-   if (((fulltrace[j] + state.x_back1) LT 0) or $
-       ((fulltrace[j] + state.x_back4) GT ysize)) then begin
-      
-      spectrum[j] = 0
-      
-   endif else begin
-   ; extract the spectrum accounting for partial pixels at the
-   ; aperture edges.  ybottom and ytop are the upper and lower limits
-   ; for full pixels in the extraction aperture.
-      ytop = fix(fulltrace[j] + state.x_xupper - 0.5) 
-      ybottom = fix(fulltrace[j] + state.x_xlower + 0.5) + 1
-
-      ; these are the fractions of a pixel
-      ; at the upper and lower edges of the
-      ; extraction aperture
-      upperfraction = fulltrace[j] + state.x_xupper - 0.5 - ytop
-      lowerfraction = 1.0 - upperfraction
-
-      ; contribution from complete pixels in the extraction window
-      signal = total(main_image[i, ybottom:ytop])
-
-      ; add in fractional pixels at aperture edges
-      uppersignal = upperfraction * main_image[i, ytop+1]
-      lowersignal = lowerfraction * main_image[i, ybottom-1]
-
-      signal = signal + uppersignal + lowersignal
-
-      ; for the background, just use full pixels
-      if (state.x_backsub EQ 1) then begin
-         lowerback = median( main_image[i, $
-                                        fulltrace[j]+state.x_back1: $
-                                        fulltrace[j]+state.x_back2])
-         upperback = median( main_image[i, $
-                                        fulltrace[j]+state.x_back3: $
-                                        fulltrace[j]+state.x_back4])
-         meanback = mean([lowerback,upperback])
-         background = meanback * float(nxpoints)
-
-         signal = signal - background
-      endif
-
-      spectrum[j] = signal
-      
-   endelse
-   
-endfor
-
-atvplot, xspec, fulltrace + state.x_xupper, color=6
-atvplot, xspec, fulltrace + state.x_xlower, color=6
-
-if (state.x_backsub EQ 1) then begin
-   atvplot, xspec, fulltrace + state.x_back1, color=5
-   atvplot, xspec, fulltrace + state.x_back2, color=5
-   atvplot, xspec, fulltrace + state.x_back3, color=5
-   atvplot, xspec, fulltrace + state.x_back4, color=5
-endif
-
-atv_specplot, /newcoord
-
-
-end
-
-;-----------------------------------------------------------------
-
-pro atv_specplot, ps=ps, fullrange=fullrange, newcoord=newcoord
-
-; draws a new row plot in the plot window or to postscript output
-
-common atv_state
-common atv_images
-common atv_spectrum
-
-if (keyword_set(ps)) then begin
-    thick = 3
-    color = 0
-endif else begin
-    thick = 1
-    color = 7
-endelse
-
-if (keyword_set(newcoord)) then newcoord = 1 else newcoord = 0
-
-if (not (keyword_set(ps))) then begin
-    newplot = 0
-    if (not (xregistered('atv_lineplot', /noshow))) then begin
-        atv_lineplot_init
-        newplot = 1
-    endif 
-
-    widget_control, state.histbutton_base_id, map=0
-    widget_control, state.holdrange_button_id, sensitive=1
-
-    widget_control, state.lineplot_xmin_id, get_value=xmin
-    widget_control, state.lineplot_xmax_id, get_value=xmax
-    widget_control, state.lineplot_ymin_id, get_value=ymin
-    widget_control, state.lineplot_ymax_id, get_value=ymax
-
-    if (newplot EQ 1 OR state.plot_type NE 'specplot' OR $
-        keyword_set(fullrange) OR $
-        ((state.holdrange_value EQ 0) AND newcoord EQ 1)) then begin
-        xmin = min(xspec)
-        xmax = max(xspec)
-        ymin = min(spectrum)
-        ymax = max(spectrum) 
-    endif
-   
-    widget_control, state.lineplot_xmin_id, set_value=xmin
-    widget_control, state.lineplot_xmax_id, set_value=xmax
-    widget_control, state.lineplot_ymin_id, set_value=ymin
-    widget_control, state.lineplot_ymax_id, set_value=ymax
-
-    state.lineplot_xmin = xmin
-    state.lineplot_xmax = xmax
-    state.lineplot_ymin = ymin
-    state.lineplot_ymax = ymax
-
-    state.plot_type = 'specplot'
-    atv_setwindow, state.lineplot_window_id
-    erase
-    
-endif
-
-plot, xspec, spectrum, $
-  xst = 3, yst = 3, psym = 10, $
-  title = strcompress('Extracted Spectrum'), $
-
-  xtitle = 'Column', $
-  ytitle = 'Counts', $
-  color = color, xmargin=[15,3], $
-  xran = [state.lineplot_xmin, state.lineplot_xmax], $
-  yran = [state.lineplot_ymin, state.lineplot_ymax], $
-  thick = thick, xthick = thick, ythick = thick, charthick = thick
-
-
-if (not (keyword_set(ps))) then begin 
-  widget_control, state.lineplot_base_id, /clear_events
-  atv_resetwindow
-endif
-
-end
-
-;-------------------------------------------------------------------
-
-pro atvextract_init
-
-; initialize the extraction widget
-
-common atv_state
-
-; reset the extraction region when starting up
-state.x_xregion = [0, state.image_size[0]-1]
-state.x_backsub = 1
-state.x_fixed = 0
-
-extract_base = widget_base(/base_align_left, $
-                  group_leader = state.base_id, $
-                  /column, $
-                  title = 'atv spectral extraction', $
-                  uvalue = 'extract_base')
-
-trace_id = widget_base(extract_base, /row, /base_align_left)
-
-state.x_tracestep_id = cw_field(trace_id, /long, /return_events, $
-                          title = 'Trace step:', $
-                          uvalue = 'tracestep', $
-                          value = state.x_tracestep, $
-                          xsize = 5)
-
-state.x_traceheight_id = cw_field(trace_id, /long, /return_events, $
-                          title = 'Trace height:', $
-                          uvalue = 'traceheight', $
-                          value = state.x_traceheight, $
-                          xsize = 5)
-
-state.x_traceorder_id = cw_field(extract_base, /long, /return_events, $
-                          title = 'Trace fit order:', $
-                          uvalue = 'traceorder', $
-                          value = state.x_traceorder, $
-                          xsize = 5)
-
-xregion_base = widget_base(extract_base, /row, /base_align_left)
-
-state.x_xregion = [0, state.image_size[0]-1]
-
-state.x_xstart_id = cw_field(xregion_base, /long, /return_events, $
-                    title = 'Extraction start:', $
-                    uvalue = 'xstart', $
-                    value = state.x_xregion[0], $
-                    xsize = 5)
-
-state.x_xend_id = cw_field(xregion_base, /long, /return_events, $
-                    title = 'end:', $
-                    uvalue = 'xend', $
-                    value = state.x_xregion[1], $
-                    xsize = 5)
-
-xwidth_base = widget_base(extract_base, /row, /base_align_left)
-
-state.x_xlower_id = cw_field(xwidth_base, /long, /return_events, $
-                    title = 'Extraction width lower:', $
-                    uvalue = 'lower', $
-                    value = state.x_xlower, $
-                    xsize = 5)
-
-state.x_xupper_id = cw_field(xwidth_base, /long, /return_events, $
-                    title = 'upper:', $
-                    uvalue = 'upper', $
-                    value = state.x_xupper, $
-                    xsize = 5)
-
-x_backsub = cw_bgroup(extract_base, ['on', 'off'], $\
-                      uvalue = 'backsub', $
-                      button_uvalue = ['on', 'off'], $
-                      /exclusive, set_value = 0, $
-                      label_left = 'Background subtraction: ', $
-                      /no_release, $
-                      /row)
-
-xbacka_base = widget_base(extract_base, /row, /base_align_left)
-
-state.x_back1_id = cw_field(xbacka_base, /long, /return_events, $
-                    title = 'Lower background region:', $
-                    uvalue = 'back1', $
-                    value = state.x_back1, $
-                    xsize = 5)
-
-state.x_back2_id = cw_field(xbacka_base, /long, /return_events, $
-                    title = 'to', $
-                    uvalue = 'back2', $
-                    value = state.x_back2, $
-                    xsize = 5)
-
-xbackb_base = widget_base(extract_base, /row, /base_align_left)
-
-state.x_back3_id = cw_field(xbackb_base, /long, /return_events, $
-                    title = 'Upper background region:', $
-                    uvalue = 'back3', $
-                    value = state.x_back3, $
-                    xsize = 5)
-
-state.x_back4_id = cw_field(xbackb_base, /long, /return_events, $
-                    title = 'to', $
-                    uvalue = 'back4', $
-                    value = state.x_back4, $
-                    xsize = 5)
-
-x_fixbutton = cw_bgroup(extract_base, ['Toggle parameter hold'], $\
-                      uvalue = 'fixed', $
-                      /no_release, $
-                      /row)
-
-x_writespectbutton = cw_bgroup(extract_base, $
-                               ['Write spectrum as FITS', $
-                                'Write spectrum as text'], $
-                               uvalue = 'writespect', $
-                               button_uvalue = ['fits', 'text'], $
-                               /no_release, /row)
-
-extract_done = $
-   widget_button(extract_base, $
-                 value = 'Done', $
-                 uvalue = 'extract_done')
-    
-
-widget_control, extract_base, /realize
-xmanager, 'atv_extract', extract_base, /no_block
-atv_resetwindow
-
-end
-
-;-------------------------------------------------------------------------
-
-pro atv_extract_event, event
-
-common atv_state
-
-widget_control, event.id, get_uvalue = uvalue
-
-case uvalue of
-   
-   'tracestep': begin
-      state.x_tracestep = 1 > event.value < 101
-      if NOT(long(state.x_tracestep)/2 ne state.x_tracestep/2.0) then $ 
-         state.x_tracestep = state.x_tracestep + 1
-      widget_control, state.x_tracestep_id, $
-                      set_value = state.x_tracestep
-      atvextract
-   end
-   
-   'traceheight': begin
-      state.x_traceheight = 3 > event.value < 101
-      state.x_traceheight = state.x_traceheight < state.image_size[1]
-      widget_control, state.x_traceheight_id, $
-                      set_value = state.x_traceheight
-      atvextract
-   end
-
-   'traceorder': begin
-      state.x_traceorder = 0 > event.value < 10
-      widget_control, state.x_traceorder_id, $
-                      set_value = state.x_traceorder
-      atvextract
-   end
-
-   'xstart': begin
-      state.x_xregion[0] = 0 > event.value < (state.x_xregion[1] - 50)
-      widget_control, state.x_xstart_id, $
-                      set_value = state.x_xregion[0]
-      atvextract
-   end
-
-   'xend': begin
-      state.x_xregion[1] = (state.x_xregion[0] + 50) > event.value < $ 
-                        (state.image_size[0] - 1)
-      widget_control, state.x_xend_id, $
-                      set_value = state.x_xregion[1]
-      atvextract
-   end
-
-   'lower': begin
-      state.x_xlower = event.value < (state.x_xupper - 2)
-      if (state.x_xlower LT state.x_back2) then $
-         state.x_xlower = state.x_back2 + 1
-      widget_control, state.x_xlower_id, $
-                      set_value = state.x_xlower
-      atvextract
-   end
-
-   'upper': begin
-      state.x_xupper = (state.x_xlower + 2) > event.value 
-      if (state.x_xupper GT state.x_back3) then $
-         state.x_xupper = state.x_back3 - 1
-      widget_control, state.x_xupper_id, $
-                      set_value = state.x_xupper
-      atvextract
-   end
-
-   'backsub': begin
-      if (event.value EQ 'on') then state.x_backsub = 1 $
-      else state.x_backsub = 0
-      atvextract
-   end
-   
-   'back1': begin
-      state.x_back1 = (-0.5 * state.image_size[1]) > event.value < $
-                      (state.x_back2 - 1)
-      widget_control, state.x_back1_id, $
-                      set_value = state.x_back1
-      atvextract
-   end
-
-   'back2': begin
-      state.x_back2 = (state.x_back1 + 1) > event.value < (state.x_xlower - 1)
-      widget_control, state.x_back2_id, $
-                      set_value = state.x_back2
-      atvextract
-   end
-
-   'back3': begin
-      state.x_back3 = (state.x_xupper + 1) > event.value < (state.x_back4 - 1)
-      widget_control, state.x_back3_id, $
-                      set_value = state.x_back3
-      atvextract
-   end
-
-   'back4': begin
-      state.x_back4 = (state.x_back3 + 1) > event.value < $
-                      (0.5 * state.image_size[1])
-      widget_control, state.x_back4_id, $
-                      set_value = state.x_back4
-      atvextract
-   end
-
-   'fixed': begin
-      if (state.x_fixed EQ 1) then begin
-         widget_control, state.x_tracestep_id, sensitive=1
-         widget_control, state.x_traceheight_id, sensitive=1
-         widget_control, state.x_traceorder_id, sensitive=1
-         widget_control, state.x_xstart_id, sensitive=1
-         widget_control, state.x_xend_id, sensitive=1
-         widget_control, state.x_xlower_id, sensitive=1
-         widget_control, state.x_xupper_id, sensitive=1
-         widget_control, state.x_back1_id, sensitive=1
-         widget_control, state.x_back2_id, sensitive=1
-         widget_control, state.x_back3_id, sensitive=1
-         widget_control, state.x_back4_id, sensitive=1
-         state.x_fixed = 0
-      endif else begin
-         widget_control, state.x_tracestep_id, sensitive=0
-         widget_control, state.x_traceheight_id, sensitive=0
-         widget_control, state.x_traceorder_id, sensitive=0
-         widget_control, state.x_xstart_id, sensitive=0
-         widget_control, state.x_xend_id, sensitive=0
-         widget_control, state.x_xlower_id, sensitive=0
-         widget_control, state.x_xupper_id, sensitive=0
-         widget_control, state.x_back1_id, sensitive=0
-         widget_control, state.x_back2_id, sensitive=0
-         widget_control, state.x_back3_id, sensitive=0
-         widget_control, state.x_back4_id, sensitive=0
-         state.x_fixed = 1
-      endelse
-   end
-
-   'writespect': begin
-      if (event.value EQ 'fits') then begin
-         atv_writespecfits
-      endif else begin
-         atv_writespectext
-      endelse   
-   end
-
-   'extract_done': widget_control, event.top, /destroy
-   else:
-endcase
-
-end
-
-;-----------------------------------------------------------------
-
-pro atv_writespecfits
-
-common atv_state
-common atv_spectrum
-
-filename = dialog_pickfile(group=state.base_id, $
-                           filter = '*.fits', $
-                           file = 'atvspectrum.fits', $
-                           default_extension = '.fits', $
-                           /write, $
-                           /overwrite_prompt, $
-                           path = state.current_dir, $
-                           get_path = tmp_dir, $
-                           title = 'Write FITS Spectrum')
-if (tmp_dir NE '') then state.current_dir = tmp_dir
-if (filename EQ '') then return
-
-
-if (ptr_valid(state.head_ptr)) then begin
-   outheader = *(state.head_ptr)
-; keep wavelength scale from STIS if available
-   cd = double(sxpar(*state.head_ptr,'CD1_1', /silent))
-   crpix = double(sxpar(*state.head_ptr,'CRPIX1', /silent))
-   crval = double(sxpar(*state.head_ptr,'CRVAL1', /silent))
-   shifta = double(sxpar(*state.head_ptr, 'SHIFTA1', /silent))
-   
-   sxdelpar, outheader, 'CD1_1'
-   sxdelpar, outheader, 'CRPIX1'
-   sxdelpar, outheader, 'CRVAL1'
-   sxdelpar, outheader, 'SHIFTA1'
-endif else begin
-   cd = 0
-   crpix = 0
-   crval = 0
-   shifta = 0
-endelse
-
-if (crval NE 0) AND (cd NE 0) then begin
-   ; get wavelength scale, accounting for extraction start and end
-   wavelength = crval + ((dindgen(state.image_size[0]) - crpix) * cd) + $
-                (shifta * cd)
-   wavelength = wavelength[state.x_xregion[0]:state.x_xregion[1]]
-endif else begin
-   wavelength = xspec
-endelse
-
-; note, this works for linear wavelength scales only
-cd = wavelength[1] - wavelength[0]
-crval = wavelength[0]
-
-if (ptr_valid(state.head_ptr)) then begin
-   sxaddpar, outheader, 'CRVAL1', crval
-   sxaddpar, outheader, 'CD1_1', cd
-   writefits, filename, spectrum, outheader
-endif else begin
-   writefits, filename, spectrum
-   spectrum = readfits(filename, outheader)
-   sxaddpar, outheader, 'CRVAL1', crval
-   sxaddpar, outheader, 'CD1_1', cd
-   writefits, filename, spectrum, outheader
-endelse
-
-end
-
-;------------------------------------------------------------------
-
-pro atv_writespectext
-
-common atv_state
-common atv_spectrum
-
-filename = dialog_pickfile(group=state.base_id, $
-                           /write, $
-                           file = 'atvspectrum.txt', $
-                           /overwrite_prompt, $
-                           path = state.current_dir, $
-                           get_path = tmp_dir, $
-                           title = 'Write Text Spectrum')
-if (tmp_dir NE '') then state.current_dir = tmp_dir
-if (filename EQ '') then return
-
-if (ptr_valid(state.head_ptr)) then begin
-; keep wavelength scale from STIS if available
-   cd = double(sxpar(*state.head_ptr,'CD1_1', /silent))
-   crpix = double(sxpar(*state.head_ptr,'CRPIX1', /silent))
-   crval = double(sxpar(*state.head_ptr,'CRVAL1', /silent))
-   shifta = double(sxpar(*state.head_ptr, 'SHIFTA1', /silent))
-endif else begin
-   cd = 0
-   crpix = 0
-   crval = 0
-   shifta = 0
-endelse
-
-if (crval NE 0) AND (cd NE 0) then begin
-   ; get wavelength scale, accounting for extraction start and end
-   wavelength = crval + ((dindgen(state.image_size[0]) - crpix) * cd) + $
-                (shifta * cd)
-   wavelength = wavelength[state.x_xregion[0]:state.x_xregion[1]]
-endif else begin
-   wavelength = xspec
-endelse
-
-openw, unit0, filename, /get_lun
-
-for i = 0L, n_elements(xspec)-1 do begin
-   printf, unit0, wavelength[i], spectrum[i]
-endfor
-
-close, unit0
-free_lun, unit0
-
-end
-
-
-;--------------------------------------------------------------------
-;    shutdown routine
-;--------------------------------------------------------------------
-
-pro atv_shutdown, windowid
-
-; routine to kill the atv window(s) and clear variables to conserve
-; memory when quitting atv.  The windowid parameter is used when
-; atv_shutdown is called automatically by the xmanager, if atv is
-; killed by the window manager.
-
-common atv_images
-common atv_state
-common atv_color
-common atv_pdata
-common atv_spectrum
-
-if (state.photprint EQ 1) then begin
-   free_lun, state.photfile
-endif
-
-; reset color table and pmulti to user values
-tvlct, user_r, user_g, user_b
-!p.multi = state.active_window_pmulti
-
-; Kill top-level base if it still exists
-if (xregistered ('atv')) then widget_control, state.base_id, /destroy
-
-; Destroy all pointers to plots and their heap variables: this runs
-; ptr_free on any existing plot pointers
-if (nplot GT 0) then begin
-    atverase, /norefresh
-endif
-
-if (size(state, /tname) EQ 'STRUCT') then begin
-    if (!d.name EQ state.graphicsdevice) then wdelete, state.pan_pixmap
-    if (ptr_valid(state.head_ptr)) then ptr_free, state.head_ptr
-    if (ptr_valid(state.astr_ptr)) then ptr_free, state.astr_ptr
-endif
-
-; Clean up saved variables in common blocks to conserve memory.
-; Previously this was done using delvarx, but since delvarx uses an
-; execute function, it's incompatible with IDL virtual machine.  So,
-; just set these variables to zero.
-
-plot_ptr=0
-maxplot=0
-main_image=0
-display_image=0
-scaled_image=0
-blink_image1=0
-blink_image2=0
-blink_image3=0
-unlink_image=0
-pan_image=0
-r_vector=0
-g_vector=0
-b_vector=0
-user_r=0
-user_g=0
-user_b=0
-state=0
-traceinit=0
-tracecenters=0
-tracepoints=0
-xspec=0
-fulltrace=0
-spectrum=0
-
-return    
-end
-
 
 ;--------------------------------------------------------------------
 ;    atv main program.  needs to be last in order to compile.
@@ -9500,10 +8597,10 @@ if ( (n_params() NE 0) AND (size(image, /tname) NE 'STRING') AND $
 if (n_elements(main_image) LE 1) then begin
     gridsize = 512
     centerpix = 256
-    x = ((findgen(gridsize) # replicate(1, gridsize)) - centerpix + 0.001)*0.05
-    y = ((replicate(1, gridsize) # findgen(gridsize)) - centerpix + 0.001)*0.05
-    main_image = abs((sin(x*x*y)/(sqrt(x^2 + y^2))) * $
-                     (sin(x*y*y)/(sqrt(x^2 + y^2)))) 
+; square pattern:
+    x = ((findgen(gridsize) # replicate(1, gridsize)) - centerpix + 0.001)*0.5
+    y = ((replicate(1, gridsize) # findgen(gridsize)) - centerpix + 0.001)*0.5
+    main_image = (sin(x)/x) * (sin(y)/y)
     state.min_value = 0.0
     state.max_value = 1.0
     stretch = 1
@@ -9549,8 +8646,7 @@ if (newimage GE 1) then begin
          then atv_autoscale
     ENDIF 
 
-;    if (state.firstimage EQ 1 AND newimage EQ 1) then atv_autoscale
-    if (state.firstimage EQ 1) then atv_autoscale
+    if (state.firstimage EQ 1 AND newimage EQ 1) then atv_autoscale
     if (newimage EQ 1) then state.firstimage = 0  ; now have a real image
         
     atv_set_minmax
@@ -9584,4 +8680,8 @@ endif
 
 
 end
+
+
+
+
 

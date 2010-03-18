@@ -159,7 +159,7 @@ endif
 
 ;** widgets and objects
 ; base widget
-top=widget_base(column=2, title='FORCAST Spectral Extraction Widget v1.3', $
+top=widget_base(column=2, title='FORCAST Grism Spectral Extraction Widget v1.3', $
 ;      mbar=mbar, /scroll, x_scroll_size=1024, y_scroll_size=768) ; scroling
        mbar=mbar) ; non scroling
 ;control base

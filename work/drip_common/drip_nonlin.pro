@@ -31,7 +31,7 @@
 ;
 
 ;******************************************************************************
-; DRIP_UNDISTORT - Undistorts frames
+; DRIP_NONLIN - Linearity correction
 ;******************************************************************************
 
 function drip_nonlin, data, coeff, header, basehead
