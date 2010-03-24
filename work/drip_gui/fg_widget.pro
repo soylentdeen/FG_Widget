@@ -246,8 +246,8 @@ analman_stats->start, dispman
 xplot->start,dispman
 analman_extract->start, dispman, xplot, extman
 dropman->start
-pipeman->start, mbar, ctrlbase1, disp_sels=analsels
 menu->start, mbar, disp_sels=analsels
+pipeman->start, mbar, ctrlbase1, disp_sels=analsels
 automan->start, mbar, ctrlbase1
 greeting=getpar(config,'greeting')
 if (size(greeting))[0] eq 7 then mw->print,greeting

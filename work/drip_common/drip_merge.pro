@@ -73,6 +73,9 @@
 ;                 (chopsub, nodframes, nodsub)
 ;     Modified:   Marc Berthoud, CU, August 2007
 ;                 Added choping with voltages, nodding with RA, DEC
+;     Modified:   Luke Keller and Marc Berthoud, Ithaca College March 2010
+;                 Added optioon to shif and add by pixels (rather than arcsec) if
+;                 specified with TELESCOP='PIXELS'. Added check for off-chip nodding.
 
 ;******************************************************************************
 ;     DRIP_MERGE - Merges object images
@@ -95,9 +98,10 @@ s=size(data)
 merged=fltarr(s[1],s[2])
 mode=drip_getpar(header,'INSTMODE')
 telescope=drip_getpar(header,'TELESCOP') ; to determine plate scale
+;telescope=sxpar(header, 'TELESCOP')
 plate_scale=0.75  ; assume telescope = SOFIA, then plate scale is 0.75 arcsec/pixel
 if telescope eq 'Palomar' then plate_scale=7.274 ; pixels per volt
-if telescope eq 'PIXELS' then plate_sclae=1.0 ; keep chop and nod ampitudes in pixels
+if telescope eq 'PIXELS' then plate_scale=1.0 ; keep chop and nod ampitudes in pixels
 mode=strtrim(mode,2)
 ; run appropriate method
 switch mode of
@@ -135,7 +139,7 @@ switch mode of
        nodang=drip_getpar(header,'NODANGLE')
        ;noddist=7.274*drip_getpar(header,'NODRAAS')
        ;nodang=drip_getpar(header,'NODDECAS')
-       noddist=float(noddist) ; took out *4/3
+       noddist=float(noddist)/plate_scale
        nodang=!pi/180*nodang
        nodx=noddist*sin(nodang)
        nody=-noddist*cos(nodang)
@@ -176,12 +180,22 @@ switch mode of
        ;drip_message,'sky_angle='+string(sky_angle)
        ;drip_message,'nodx='+string(nodx)+' nody='+string(nody)
        mergechop=data-shift(data,chopx,chopy)
+       
        ; add nod cycle images
-       ;print,nodbeam
-       if (nodbeam eq 'A') then begin
-           merged=mergechop-shift(mergechop,-nodx,-nody)
+       
+       ; If the nod is larger than 1/2 the array width (128 pixels), then assume
+       ; that the nod is off-chip and subtract nods without shifting
+       if (sqrt(nodx^2+nody^2)) gt 2*128 then begin
+              if (nodbeam eq 'A') then merged = -mergechop $
+                  else merged = mergechop
        endif else begin
-           merged=shift(mergechop,-nodx,-nody)-mergechop
+       ; If the nod is smaller than 1/2 the array width (128 pixels), then assume
+       ; that the nod is on-chip and subtract nods by shifting (NODAMP)
+          if (nodbeam eq 'A') then begin
+              merged=mergechop-shift(mergechop,-nodx,-nody)
+          endif else begin
+              merged=shift(mergechop,-nodx,-nody)-mergechop
+          endelse
        endelse
        break
    end

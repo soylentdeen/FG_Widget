@@ -43,6 +43,13 @@
 ; MODIFICATION HISTORY:
 ;     Written by: Marc Berthoud, Cornell University, June 2005
 ;                 Adapted from drip_anal_stats__define.pro
+;     Modified: Nirbhik Chitarkar, Ithaca College, 2008
+;               Changed point to aperture photometry with sky annulus
+;     Modified: Luke Keller, Ithaca College, February 2010
+;               Update photometry and S/N calculation to be in
+;               electrons
+;     Modified: Keller / Berthoud, Ithaca College, March 2010
+;               use gauss2dfit for calculating FWHM
 
 ;****************************************************************************
 ;     UPDATE - updates the displayed data
@@ -55,7 +62,7 @@ PRO drip_anal_point::update
      image=self.disp->getdata(/dataraw)
      imgsize=size(*image)
      if (imgsize[0] gt 0) then begin ; we have data
-        ; update locations of box in image
+        ; update locations of box in image coordinates
         zoom=self.disp->getdata(/zoom)
         self.centu=round(float(self.centx)/zoom)
         self.centv=round(float(self.centy)/zoom)
@@ -77,31 +84,32 @@ PRO drip_anal_point::update
 ;            self.isradw=self.osradw-diff[0]
 ;            self.apradw=self.osradw-diff[1]
 ;         endif
-        ; update circle positions
+        ; update circle positions in display coordinates
         self.centx=round(float(self.centu)*zoom)
         self.centy=round(float(self.centv)*zoom)
         self.apradz=round(float(self.apradw)*zoom)
         self.isradz=round(float(self.isradw)*zoom)
         self.osradz=round(float(self.osradw)*zoom)
 
-        ;calculations and photometry
+        ; calculations and photometry
 
+        ; get image of all inside outer ring
         x0=self.centu-self.osradw > 0
         x1=self.centu+self.osradw < imgsize[1] -1
         y0=self.centv-self.osradw > 0
         y1=self.centv+self.osradw < imgsize[2] -1
 
-        ;crop the image
+        ; crop the image
         buffer=(*image)[x0:x1,$
                         y0:y1]
-        ;size of buffer
+        ; size of buffer
         bsz=size(buffer)
 
-        ;center coordinates of the buffer
+        ; center coordinates of the buffer
         xc=self.osradw < bsz[1]-1
         yc=self.osradw < bsz[2]-1   ; >
         
-        ;find the r-coordinate for all the points in buffer
+        ; find the r-coordinate for all the points in buffer
         r=fltarr(bsz[1],bsz[2])
         for i=0,bsz[1]-1 do begin
             for j=0,bsz[2]-1 do begin
@@ -111,11 +119,11 @@ PRO drip_anal_point::update
         apid=where(r lt self.apradw)
         skyid=where(r gt self.isradw and r lt self.osradw)
 
-        ;REPLACE WITH call to APER.PRO? Generate 'source' 'sky' and 'noise'
+        ; REPLACE WITH call to APER.PRO? Generate 'source' 'sky' and 'noise'
         ;gain=float(drip_getpar(*self.basehead,'EPERADU')) ;get gain from header
         eperadu=1294 ; SWC and LWC electrons per A/D unit
         source=total(buffer[apid],/nan)-total(buffer[skyid],/nan)*n_elements(apid)/n_elements(skyid)
-        ;Calculate noise in photometry anulus
+        ; Calculate noise in photometry anulus
         ; Calulate sum of source pixel values (in electrons)
         source_electrons=source*eperadu
         ; Calculate photon noise of source by taking sqrt
@@ -142,14 +150,37 @@ PRO drip_anal_point::update
         fwhmy=2*SQRT(2*ALOG(2))*coeff[2]
         ;final fwhm is the average of fwhmx and fwhmy
         fwhm=(fwhmx+fwhmy)/2
+        
+        ; NEW fit with gauss2dfit
 
-        ;fix format for all
+        ; boxsize = mean of inscribed and outer square of aperture circle
+        boxsize=fix(0.85*float(self.apradw)+0.5)
+        ; get the image
+        fitimg=buffer[((xc-boxsize)>0):((xc+boxsize)<bsz[1]-1), $
+                      ((yc-boxsize)>0): ((yc+boxsize)<bsz[2]-1)]
+        ; do gauss fit (make sure we fit positive or negative bump)
+        imean=mean(fitimg)
+        imed=median(fitimg)
+        if imean gt imed then res=gauss2dfit(fitimg,ans) $
+          else if imean lt imed then res=gauss2dfit(fitimg,ans,/negative) $
+          else ans=[0.0,0.0,100.0,100.0,0.0,0.0]
+        ; extract values
+        self.fitu=float(self.boxu0)+ans[4]
+        self.fitv=float(self.boxv0)+ans[5]
+        self.fitdu=ans[2]
+        self.fitdv=ans[3]
+        self.fitampl=ans[1]
+        self.fitoff=ans[0]
+        ; calculate FWHM = 2*sqrt(2*ln(2))*sigma
+        fwhm=2*SQRT(2*ALOG(2))*(self.fitdu+self.fitdv)/2.0
+
+        ; fix format for table numbers
         all = [ fwhm, source_electrons, noise, s2n ]
         text = strarr(4)
         for i= 0,3 do begin
            x = all[i]
            case 1 of
-              (abs(x) gt 999999) : fmt = '(e10.0)'
+              (abs(x) gt 999999) : fmt = '(e10.1)'
               (abs(x) lt 0.1) : fmt = '(e10.1)'
               else : fmt = '(f10.1)'
            endcase

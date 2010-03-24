@@ -26,7 +26,7 @@
 ;****************************************************************************
 ;     DRIP_CONFIG_LOAD - load it
 ;****************************************************************************
-pro drip_config_load,prompt=prompt
+pro drip_config_load, confilename=confilename, prompt=prompt
 ; search for drip configuration file -> conffilename
 cd,'.',current=currentdir
 if (size(findfile(currentdir+path_sep()+'dripconf.txt')))[0] eq 1 then begin
@@ -35,7 +35,7 @@ endif else if keyword_set(prompt) then conffilename= $
   dialog_pickfile(/must_exist,/read,title='Load DRIP Conf File:') $
 else conffilename=''
 ; initialize config_info (save filename in config[0])
-common drip_config_info, dripconf
+common drip_config_info, dripconf, drip_errproc
 dripconf=[conffilename]
 ; read configuration file -> config (array of strings)
 if strlen(conffilename) gt 0 then begin

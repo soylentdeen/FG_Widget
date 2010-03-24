@@ -270,7 +270,7 @@ loglabel=widget_label(log, value='Log')
 color=widget_base(table, /column)
 colorlabel=widget_label(color, value='Color')
 ; data
-dataheaders=['FWHM', 'Source', 'Noise', 'S/N']
+dataheaders=['FWHM', 'Source (e-)', 'Noise (e-)', 'S/N']
 dtbl=widget_base(table, /column)
 row=widget_base(dtbl, column=6)
 ;row-data[0]
