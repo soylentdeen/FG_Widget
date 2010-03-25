@@ -375,8 +375,8 @@ endif else begin
 endelse
 
 ; read linearity correction coefficient files, DETCHAN = (0 for SWC, 1 for LWC)  ;LIN
-;det_chan=fix(drip_getpar(*self.basehead,'DETCHAN'),type=2)
-det_chan=fix(sxpar(*self.basehead,'DETCHAN'))
+det_chan=fix(drip_getpar(*self.basehead,'DETCHAN'),type=2)
+;det_chan=fix(sxpar(*self.basehead,'DETCHAN'))
 print,'DETCHAN= ',det_chan
 if det_chan eq 0 then begin
     self.linfile=self.pathload+'SWC_linearity_coeff.fits'
@@ -437,12 +437,12 @@ drip_message,'drip::getcal - done cleaning flats'
 ;for the master flatfield image. If imaging mode, then used the entire
 ;array.
 
-;filter=drip_getpar(*self.basehead,'FILT2_S')
-filter=sxpar(*self.basehead,'FILT2_S')
+filter=drip_getpar(*self.basehead,'FILT2_S')
+;filter=sxpar(*self.basehead,'FILT2_S')
 if ((filter eq 'grism2') OR (filter eq 'grism4')) then begin
     ;get the order mask
-    ;fname=drip_getpar(*self.basehead,'MASKFILE')
-    fname=sxpar(*self.basehead,'MASKFILE')
+    fname=drip_getpar(*self.basehead,'MASKFILE')
+    ;fname=sxpar(*self.basehead,'MASKFILE')
     ordermask=readfits(self.pathload+fname)
 endif else begin
    ordermask=dblarr(256,256)+1

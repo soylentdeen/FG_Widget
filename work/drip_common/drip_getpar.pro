@@ -1,8 +1,10 @@
 ; NAME:
-;     DRIP_GETPAR - Version 1.0
+;     DRIP_GETPAR - Version 1.1
 ;
 ; PURPOSE:
-;     Get a header parameter with error treatment
+;     Get a header parameter with error treatment. If the parameter is
+;     in the drip config, then the keyword in drip config is retrieved
+;     from the header or the parameter from drip config is returned.
 ;
 ; CALLING SEQUENCE:
 ;     PARAM=DRIP_GETPAR( HEADER, PARNAME )
@@ -35,6 +37,11 @@
 ;     Written by:  Marc Berthoud, Cornell University, June, 2004
 ;     Modified: Marc Berthoud, Cornell University, September 2007
 ;               Added use of dripconf and drip_message
+;     Modified: Marc Berthoud, Cornell University, March 2010
+;               Dropped requirement to have keyword in drip config,
+;               now keyword can be retrieved directly from header
+;               ==>> Now Version 1.1
+;
 
 ;****************************************************************************
 ;     DRIP_GETPAR - set data values
@@ -77,14 +84,12 @@ while not found and confi lt confn do begin
         endif else confi++
     endif else confi++
 endwhile
-; catch error if parameter not found
+; if parameter not found, set value = parameter
+print,confi,confn
 if confi eq confn then begin
-    msg=caller+' - requires '+parname+' keyword in drip config'
-    if keyword_set(vital) then drip_message, msg, /fatal $
-    else drip_message, msg
-    return,'x'
+    value = parname
 endif
-; Get fits keyword if requested (i.e. if first character is alphabetic
+; Get fits keyword if requested (i.e. if first character is alphabetic)
 cval=(byte(strupcase(value)))[0]
 if cval lt 91 and cval gt 64 then begin
     ; cut value at first space
@@ -94,7 +99,7 @@ if cval lt 91 and cval gt 64 then begin
     paramval=sxpar(header,value)
     ; error message if not found
     if !err eq -1 then begin
-        msg=caller+' - requires '+parname+' keyword in header'
+        msg=caller+' - requires '+parname+' keyword in header / drip config'
         if keyword_set(vital) then drip_message, msg, /fatal $
         else drip_message, msg
         return,'x'

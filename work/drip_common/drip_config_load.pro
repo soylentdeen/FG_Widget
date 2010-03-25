@@ -1,14 +1,16 @@
 ; NAME:
-;     DRIP_CONFIG_LOAD - Version 1.0
+;     DRIP_CONFIG_LOAD - Version 1.1
 ;
 ; PURPOSE:
 ;     Load drip configuration and put it into common block
-;     WARNING: overwrites existing configuration
+;     WARNING: this command overwrites previously stored configuration
 ;
 ; CALLING SEQUENCE:
 ;     DRIP_CONFIG_LOAD,/PROMPT
 ;
 ; INPUTS:
+;     CONFFILENAME - variable to specify a particular configuration
+;                    file (dripconf.txt in current folder is standart)
 ;     PROMPT - asks user for filename if dripconf.txt not found in
 ;              current directory
 ;
@@ -21,19 +23,43 @@
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, 2007-9
+;     Modifed: Marc Berthoud, Cornell University, 2010-3
+;              Added conffilename parameter
+;               ==>> Now Version 1.1
 ;
 
 ;****************************************************************************
 ;     DRIP_CONFIG_LOAD - load it
 ;****************************************************************************
-pro drip_config_load, confilename=confilename, prompt=prompt
+pro drip_config_load, conffilename=conffilename, prompt=prompt
 ; search for drip configuration file -> conffilename
-cd,'.',current=currentdir
-if (size(findfile(currentdir+path_sep()+'dripconf.txt')))[0] eq 1 then begin
-    conffilename=currentdir+path_sep()+'dripconf.txt'
-endif else if keyword_set(prompt) then conffilename= $
-  dialog_pickfile(/must_exist,/read,title='Load DRIP Conf File:') $
-else conffilename=''
+cd,'.',current=currdir
+if keyword_set(conffilename) then begin
+    cfnsize=size(conffilename)
+    if total(size(conffilename) eq [0,7,1]) lt 3 then begin
+        conffilename=''
+    endif else if (size(findfile(conffilename)))[0] eq 1 then begin
+        ; conffilename is valid
+    endif else if (size(findfile(currdir+path_sep()+conffilename)))[0] eq 1 $
+      then begin
+        ; conffilename requires current path
+        conffilename=currdir+path_sep()+conffilename
+    endif else begin
+        ; did not find valid conffilename -> setting to ''
+        conffilename=''
+    endelse
+endif else begin
+    if (size(findfile(currdir+path_sep()+'dripconf.txt')))[0] eq 1 then begin
+        ; valie dripconf.txt was found in current folder
+        conffilename=currdir+path_sep()+'dripconf.txt'
+    endif else conffilename=''
+endelse
+; if no valid file was found, prompt if set
+if strlen(conffilename) eq 0 then begin
+    if keyword_set(prompt) then conffilename= $
+      dialog_pickfile(/must_exist,/read,title='Load DRIP Conf File:')
+endif
+print,'ConfFileName=',conffilename
 ; initialize config_info (save filename in config[0])
 common drip_config_info, dripconf, drip_errproc
 dripconf=[conffilename]
@@ -48,7 +74,7 @@ if strlen(conffilename) gt 0 then begin
     endwhile
     close,fileunit
     free_lun,fileunit
-; if not found: print warning, load standart configuration file
+;** if not found: print warning, load standart configuration file
 endif else begin
     ; print warning
     print,'WARNING: MISSING DRIP CONFIGURATION FILE!!!'
@@ -61,7 +87,7 @@ endif else begin
     print,'          and select a valid drip configuration file'
     print,'      **  download your valid "dripconf.txt" file to the'
     print,'          current directory which is'
-    print,'          ',currentdir
+    print,'          ',currdir
     ; load standart configuration
     ; admin keywords
     dripconf=[dripconf, 'instmode=instmode', 'obs_id=obs_id']
