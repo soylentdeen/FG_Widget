@@ -132,11 +132,10 @@ widget_control, self.topwid, update=0
 ;** go through list of widgets: check, assign wigets (ev. create new ones)
 ; set variables
 dispid=65 ; identifer of display of last analysis object
-objcnt=0 ; count how many objects for this display
+objcnt=0 ; counter for number of objects for current display
 widn=size(*self.wids,/n_elements) ; number of widget entries
 widi=1 ; index of next valid widget entry (get new widgets if > widn-1)
 colwids=(*self.wids)[0]
-;print,'SETALLWID: widn=',widn
 ; get largefont
 common gui_os_dependent_values, largefont, smallfont
 ; go through list
@@ -145,7 +144,6 @@ for anali=0,self.analn-1 do begin
     if (*self.anals)[anali]->isfocus() or $
        (*self.anals)[anali]->isshow() then begin
         ; create widgets if necessary
-        ;print,'  widi=',widi
         if widi ge widn then begin
             ; make new structure
             newwids={drip_anal_point_wids}
@@ -158,31 +156,25 @@ for anali=0,self.analn-1 do begin
             newwids.log=widget_button(colwids.log, value=' ', ysize=25)
             newwids.color=cw_color_sel(colwids.color, [0b,0b,0b], $
                                        xsize=32, ysize=19)
-            ;newwids.data=widget_label(colwids.data, ysize=25, /align_left, $
-            ;     font=smallfont, $
-                                ;     value='
-                                ;     ')
+            ; make 4 widgets in a row for data table
             data=lonarr(4)
             row=widget_base((colwids.data)[0], column=4,/frame)
-            ;row=(colwids.data)[0]
             for i=0,3 do begin
                label=widget_label(row,xsize=65, font=smallfont,/align_center)
                data[i]=label
             endfor
             newwids.data=[row,data]
-            ; append them to wids
+            ; append structure with new widgets to existing list
             *self.wids=[*self.wids,newwids]
-            ;print,'  Creating new widget label=',newwids.label
         endif
         ; check if still same display
         disp=(*self.anals)[anali]->getdata(/disp)
         newid=disp->getdata(/disp_id)
-        ;print,'  newid=',newid
         if dispid ne newid then begin
             dispid=newid
             objcnt=1
         endif else objcnt=objcnt+1
-        ; make title
+        ; make analysis object title
         title=string(string(byte(dispid)),objcnt,format='(A,"-",I1)')
         ; pass widgets to object
         (*self.anals)[anali]->setwid, (*self.wids)[widi], title
@@ -190,12 +182,10 @@ for anali=0,self.analn-1 do begin
         widi=widi+1
     endif
 endfor
-;** kill leftover widgets
-;print,'  widget sets needed=',widi
+;** destroy leftover widgets
 if widi lt widn then begin
-    ; kill widgets
+    ; destroy widgets
     while widi lt widn do begin
-        ;print,'  killing widget ',widn-1
         oldwids=(*self.wids)[widn-1]
         widget_control, oldwids.label, /destroy
         widget_control, oldwids.show, /destroy
@@ -203,12 +193,10 @@ if widi lt widn then begin
         widget_control, oldwids.close, /destroy
         widget_control, oldwids.color, /destroy
         widget_control, oldwids.log, /destroy
-        ;for i=0,3 do begin
-        widget_control, oldwids.data[0], /destroy
-        ;endfor
+        widget_control, oldwids.data[0], /destroy ; destroys row of widgets
         widn=widn-1
     end
-    ; shorten wids
+    ; shorten list of widget structure
     *self.wids=(*self.wids)[0:widn-1]
 endif
 ; activate update for upwid
@@ -245,7 +233,7 @@ self.topwid=widget_base(baseid, /column, /frame, $
                         event_pro='drip_anal_eventhand' )
 headwid=widget_base(self.topwid,/row,/align_left)
 title=widget_label(headwid, value='Point:', font=largefont)
-self.new=widget_button(headwid, value='New Box', $
+self.new=widget_button(headwid, value='New Aperture', $
                        uvalue={object:self, method:'openanal'} )
 self.logall=widget_button(headwid, value='Log All', $
                           uvalue={object:self, method:'logall'} )
@@ -269,11 +257,10 @@ loglabel=widget_label(log, value='Log')
 ; color
 color=widget_base(table, /column)
 colorlabel=widget_label(color, value='Color')
-; data
-dataheaders=['FWHM', 'Source (e-)', 'Noise (e-)', 'S/N']
+; data: make headers for data columns
+dataheaders=['FWHM (x / y)','Source (e-)', 'Noise (e-)', 'S/N']
 dtbl=widget_base(table, /column)
 row=widget_base(dtbl, column=6)
-;row-data[0]
 for i=0,3 do begin
    datalabel=widget_label(row, font=smallfont, /frame, $
                           value=dataheaders[i], xsize=65)

@@ -1,4 +1,4 @@
- NAME:
+; NAME:
 ;     DRIP_ANAL_SCALE__DEFINE - Version .7.0
 ;
 ; PURPOSE:

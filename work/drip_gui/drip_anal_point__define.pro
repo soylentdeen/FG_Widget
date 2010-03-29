@@ -50,6 +50,8 @@
 ;               electrons
 ;     Modified: Keller / Berthoud, Ithaca College, March 2010
 ;               use gauss2dfit for calculating FWHM
+;     Modified: Berthoud, Yerkes Observatory, March 2010
+;               Change FWHM field to FWHM (x/y)
 
 ;****************************************************************************
 ;     UPDATE - updates the displayed data
@@ -91,7 +93,7 @@ PRO drip_anal_point::update
         self.isradz=round(float(self.isradw)*zoom)
         self.osradz=round(float(self.osradw)*zoom)
 
-        ; calculations and photometry
+        ;** calculations and photometry
 
         ; get image of all inside outer ring
         x0=self.centu-self.osradw > 0
@@ -100,8 +102,7 @@ PRO drip_anal_point::update
         y1=self.centv+self.osradw < imgsize[2] -1
 
         ; crop the image
-        buffer=(*image)[x0:x1,$
-                        y0:y1]
+        buffer=(*image)[x0:x1,y0:y1]
         ; size of buffer
         bsz=size(buffer)
 
@@ -119,7 +120,6 @@ PRO drip_anal_point::update
         apid=where(r lt self.apradw)
         skyid=where(r gt self.isradw and r lt self.osradw)
 
-        ; REPLACE WITH call to APER.PRO? Generate 'source' 'sky' and 'noise'
         ;gain=float(drip_getpar(*self.basehead,'EPERADU')) ;get gain from header
         eperadu=1294 ; SWC and LWC electrons per A/D unit
         source=total(buffer[apid],/nan)-total(buffer[skyid],/nan)*n_elements(apid)/n_elements(skyid)
@@ -141,15 +141,15 @@ PRO drip_anal_point::update
         rowx=buffer[xc,((yc-self.apradw)>0): ((yc+self.apradw)<bsz[2]-1)]
         rowy=buffer[((xc-self.apradw)>0):((xc+self.apradw)<bsz[1]-1),yc]
         ;in x direction
-        x=findgen(n_elements(rowx))
-        gauss=gaussfit(x,rowx,coeff,nterms=6)
-        fwhmx=2*SQRT(2*ALOG(2))*coeff[2]
+        ;x=findgen(n_elements(rowx))
+        ;gauss=gaussfit(x,rowx,coeff,nterms=6)
+        ;fwhmx=2*SQRT(2*ALOG(2))*coeff[2]
         ;in y direction
-        x=findgen(n_elements(rowy))
-        gauss=gaussfit(x,rowy,coeff,nterms=6)
-        fwhmy=2*SQRT(2*ALOG(2))*coeff[2]
+        ;x=findgen(n_elements(rowy))
+        ;gauss=gaussfit(x,rowy,coeff,nterms=6)
+        ;fwhmy=2*SQRT(2*ALOG(2))*coeff[2]
         ;final fwhm is the average of fwhmx and fwhmy
-        fwhm=(fwhmx+fwhmy)/2
+        ;fwhm=(fwhmx+fwhmy)/2
         
         ; NEW fit with gauss2dfit
 
@@ -173,11 +173,14 @@ PRO drip_anal_point::update
         self.fitoff=ans[0]
         ; calculate FWHM = 2*sqrt(2*ln(2))*sigma
         fwhm=2*SQRT(2*ALOG(2))*(self.fitdu+self.fitdv)/2.0
+        fwhmx=2*SQRT(2*ALOG(2))*self.fitdu
+        fwhmy=2*SQRT(2*ALOG(2))*self.fitdv
 
         ; fix format for table numbers
-        all = [ fwhm, source_electrons, noise, s2n ]
-        text = strarr(4)
-        for i= 0,3 do begin
+        all = [ fwhmx, fwhmy, source_electrons, noise, s2n ]
+        ;all = [ self.fitdu, self.fitdv, source_electrons, noise, s2n ]
+        text = strarr(5)
+        for i= 0,4 do begin
            x = all[i]
            case 1 of
               (abs(x) gt 999999) : fmt = '(e10.1)'
@@ -186,11 +189,16 @@ PRO drip_anal_point::update
            endcase
            text[i]=string(x,format=fmt)
         endfor
-        self.datatext=text
+        ; adjust text[1] to contain fwhmx / fwhmy
+        fwhmtext=' '+strtrim(text[0],2)+'  /  '+strtrim(text[1],2)
+        ;print,'Texts='+fwhmtext+'='
+        text[1]=fwhmtext
+        ; set datatext
+        self.datatext=text[1:4]
 
-        ;set no data temporary message
+        ; fill table values to labels
         for i=1,4 do begin
-           widget_control, self.datawid[i], set_value=text[i-1]
+           widget_control, self.datawid[i], set_value=text[i]
         endfor
 
      endif else begin           ; we dont have data
@@ -214,11 +222,8 @@ wset, self.wid
 
 ; get color
 color=self.color[0]+256L*(self.color[1]+256L*self.color[2])
-self.color=[0,255,0]
-color1=self.color[0]+256L*(self.color[1]+256L*self.color[2])
-self.color=[0,0,255]
-color2=self.color[0]+256L*(self.color[1]+256L*self.color[2])
-self.color=[255,0,0]
+color1=0+256L*(255+256L*0)
+color2=0+256L*(0+256L*255)
 ; draw circles
 ; aperture
 tvcircle, self.apradz, self.centx, self.centy, color=color
@@ -236,7 +241,6 @@ ax=self.centx & ay=self.centy+self.apradz
 dax=[ax-d,ax+d,ax+d,ax-d] & day=[ay+d,ay+d,ay-d,ay-d]
 ;draw diamonds
 polyfill,dax,day,color=color,/device
-
 
 ; for inner sky
 ; center of the diamond
@@ -330,7 +334,7 @@ if (imgsize[0] gt 0) then begin ; we have data
     ; display
     ff=2.0*sqrt(alog(4.0))
     text=string(self.boxx0, self.boxy0, self.boxx1, self.boxy1, $
-                self.fitx, self.fity, self.fitdx*ff, self.fitdy*ff, $
+                self.fitu, self.fitv, self.fitdu*ff, self.fitdv*ff, $
                 self.fitampl, self.fitoff, $
                 format='(I3,I4,I4,I4,F8.2,F8.2,F6.2,F6.2,F11.3,F10.3)')
 endif else begin                ; we don't have data
@@ -600,8 +604,8 @@ struct={drip_anal_point, $
         showwid:0L, $           ; widget id for show button
         logwid:0L, $            ; widget id for log button
         colorwid:0L, $          ; widget id for color selector
-        datawid:lonarr(5), $           ; widget id for data display
-        datatext:strarr(4), $          ; text for data display
+        datawid:lonarr(5), $    ; widget ids for data displays (row, wid1, . .
+        datatext:strarr(4), $   ; text for data display
         ; fit box and fit display characteristics
         boxu0:0, boxv0:0, $     ; box frame positions:   lower left corner
         boxu1:0, boxv1:0, $     ; (in image coordinates) upper right corner
