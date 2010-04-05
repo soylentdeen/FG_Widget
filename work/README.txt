@@ -1,7 +1,5 @@
 FORCAST GRISM SPECTRAL REDUCTION/ANALYSIS
 
-This is a further test
-This is yet another test
 
 FG_WIDGET v1.3 README
 
