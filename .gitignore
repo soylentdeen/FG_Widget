@@ -3,7 +3,7 @@
 fg_start
 ._*
 .DS_Store
-FG_Widget/work/guiconf.txt
-FG_Widget/work/dripconf.txt
-FG_Widget/current/guiconf.txt
-FG_Widget/current/dripconf.txt
+guiconf.txt
+dripconf.txt
+guiconf.txt
+dripconf.txt

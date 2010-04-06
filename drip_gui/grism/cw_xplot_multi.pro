@@ -19,17 +19,17 @@ if keyword_set(file) then begin
     if not(strmatch(file,'*.fits')) then file=file+'.fits'
     
     n=0
-    wave=self.extman->getdata(wave_num=(self.orders(0)+n))
-    flux=self.extman->getdata(flux_num=(self.orders(0)+n))
+    wave=self.extman->getdata(wave_num=(*self.orders[0]+n))
+    flux=self.extman->getdata(flux_num=(*self.orders[0]+n))
     len=n_elements(wave)
-    orders=intarr(len)+(self.orders[0]+n)
+    orders=intarr(len)+(*self.orders[0]+n)
     error= dblarr(len)
-    for i=self.orders(0),self.orders(1)-1 do begin
+    for i=*self.orders[0],*self.orders[n_elements(*self.orders)]-1 do begin
         n=n+1
-        wave=[wave, self.extman->getdata(wave_num=(self.orders(0)+n))]
-        flux=[flux, self.extman->getdata(flux_num=(self.orders(0)+n))]
-        len=n_elements(self.extman->getdata(wave_num=(self.orders(0)+n)))
-        orders=[orders, intarr(len)+(self.orders[0]+n)]
+        wave=[wave, self.extman->getdata(wave_num=i)]
+        flux=[flux, self.extman->getdata(flux_num=i)]
+        len=n_elements(self.extman->getdata(wave_num=i))
+        orders=[orders, intarr(len)+i]
         error=[error, dblarr(len)]
     endfor
     data=[transpose(wave),$
@@ -75,25 +75,28 @@ pro xplot_multi::checkbox_events,event
 
 widget_control,event.id,get_uvalue=uvalue
 if (uvalue.uval eq 'all') then begin
-    for i=0,self.checkn do begin
-        self.chk_status(i)=event.select
-        widget_control,self.checkbox(i),set_button=event.select
+    for i=0,self.checkn-1 do begin
+        (*self.chk_status)[i]=event.select
+        widget_control,(*self.checkbox)[i],set_button=event.select
     endfor
 endif else begin
-    widget_control,self.checkbox(0),set_button=0
+    widget_control,(*self.checkbox)[0],set_button=0
     ;self.chk_status(0)=0
-    self.chk_status(fix(uvalue.uval)-self.orders(0))=event.select
+    print, uvalue.uval
+    (*self.chk_status)[fix(uvalue.uval)+1]=event.select
 endelse
 
 selected=0
-for i=0,self.checkn-1 do begin
-    if (self.chk_status(i) eq 1) then begin
-        selected=[selected,i+self.orders(0)]
+for i=1,self.checkn-1 do begin
+    if ((*self.chk_status)[i] eq 1) then begin
+        selected=[selected,max(*self.orders)-i+1]
+        print, selected
+        print, "loop "+string(i)
     endif
 endfor
 
 if keyword_set(selected) then begin
-    *self.selected=selected(1:*)
+    *self.selected=selected[1:*];+(*self.orders)[0]
 endif
 
 end
@@ -102,12 +105,12 @@ end
 ;******************************************************************************
 pro xplot_multi::draw,nums=nums,all=all
 
-orders=self.orders
+orders=*self.orders
 if keyword_set(all) then begin
-    *self.selected=indgen(orders(1)-orders(0)+1)+orders(0)
+    *self.selected=orders
     ;set all checkboxes to selected??
-    for i=0,self.checkn do begin
-        widget_control,self.checkbox(i),set_button=1
+    for i=0,self.checkn-1 do begin
+        widget_control,(*self.checkbox)[i],set_button=1
     endfor
 endif
 
@@ -120,17 +123,17 @@ nc=(size(colors))[2]            ;number of colors
 ;set no plot
 self.xplot->setdata,/no_oplotn
 ;set color
-n=selected(0)-orders(0)
-linecolor=colors[0,n]+256L*(colors[1,n]+256L*colors[2,n])
+n_color=selected[0]-min(orders)
+linecolor=colors[0,n_color]+256L*(colors[1,n_color]+256L*colors[2,n_color])
 self.xplot->setdata,linecolor=linecolor
 
 ;get data from extraction data manager
-wave=self.extman->getdata(wave_num=selected(0))
-flux=self.extman->getdata(flux_num=selected(0))
+wave=self.extman->getdata(wave_num=selected[0])
+flux=self.extman->getdata(flux_num=selected[0])
 self.xplot->draw,wave,flux 
 for i=1,n_elements(selected)-1 do begin
     self.xplot->setdata,/oplotn
-    n=selected(i)-orders(0)
+    n=selected[i]-min(orders)
     linecolor=colors[0,(n mod nc)]$
               +256L*(colors[1,(n mod nc)]$
                      +256L*colors[2,(n mod nc)])
@@ -159,6 +162,25 @@ self.xplot->start,dispman
 
 end
 
+;****************************************************************************
+;       CLEANUP
+;****************************************************************************
+
+pro xplot_multi::cleanup
+;free pointers
+ptr_free,self.allflux
+ptr_free,self.allwave
+ptr_free,self.selected
+ptr_free,self.colors
+ptr_free,self.orders
+ptr_free,self.chk_status
+ptr_free,self.extract
+ptr_free,self.fileinfoval
+ptr_free,self.orders
+ptr_free,self.map
+end
+
+
 ;******************************************************************************
 ;     SETDATA
 ;******************************************************************************
@@ -169,12 +191,14 @@ pro xplot_multi::setdata,xplot=xplot,$
                top_base=top_base
 
 if keyword_set(xplot) then self.xplot=xplot
-if keyword_set(checkbox) then self.checkbox=checkbox
+if keyword_set(checkbox) then *self.checkbox=checkbox
 if keyword_set(mw) then self.mw=mw
 if keyword_set(extman) then self.extman=extman
 if keyword_set(orders) then begin
-    self.orders=orders
-    self.checkn=orders(1)-orders(0)+1
+    *self.orders=orders
+    self.checkn=n_elements(orders)+1
+    ;*self.checkbox = lonarr(self.checkn)
+    *self.chk_status = lonarr(self.checkn)+1
 endif
 if keyword_set(top_base) then self.xplot_multi_base=top_base
 
@@ -190,10 +214,13 @@ self.allflux=ptrarr(100,/allocate_heap)
 self.allwave=ptrarr(100,/allocate_heap)
 self.selected=ptr_new(/allocate_heap)
 self.colors=ptr_new(/allocate_heap)
+self.orders=ptr_new(/allocate_heap)
+self.chk_status=ptr_new(/allocate_heap)
+self.checkbox=ptr_new(/allocate_heap)
 *self.colors=[[255,0,0],[255,255,0],[255,0,255],$
               [0,255,0],[0,255,255],$
               [0,0,255],$
-              [255,255,255]]
+              [255,255,255], [150, 150, 0]]
 common gui_config_info, config
 self.prevPath=getpar(config,'loadfitspath')
 
@@ -213,15 +240,15 @@ pro xplot_multi__define
 struct={xplot_multi,$
         allflux:ptrarr(100),$   ;all orders flux extracted
         allwave:ptrarr(100),$   ;all orders wave
-        checkbox:lonarr(100),$  ;id for checkboxes
+        checkbox:ptr_new(),$  ;id for checkboxes
         xplot_multi_base:0l,$   ;base widget id
         checkn:0,$              ;no. of checkboxes
-        chk_status:intarr(100),$ ;checkbox status
+        chk_status:ptr_new(),$ ;checkbox status
         prevPath:'',$           ;previous path
         xplot:obj_new(),$       ;xplot
         extman:obj_new(),$      ;extraction data manager
         mw:obj_new(), $         ;message window
-        orders:[0,0],$          ;string order and last order
+        orders:ptr_new(),$          ;string order and last order
         selected:ptr_new(),$    ;orders that are selected
         colors:ptr_new()$       ;color bank
        }
@@ -290,22 +317,27 @@ checkMain=widget_base(tlb,/column,/frame,/align_center)
 orderLabel=widget_label(checkMain,value='Select Orders',/align_center)
 chck_base=widget_base(checkMain,/row,/nonexclusive)
 n=0
-checkbox=lonarr(orders(1)-orders(0)+2)
+checkbox=lonarr(n_elements(orders)+1)
+;checkbox=lonarr(n_elements(*orders))+*orders[0]
 checkbox(n) = widget_button(chck_base,$
                             value='all',$
                             event_pro='xplot_multi_eventhand',$
                             uvalue={object:xplot_multi,$
                                     method:'checkbox_events',$
                                     uval:'all'})
-for i=orders(0),orders(1) do begin
-    n = n+1
-    checkbox(n) = widget_button(chck_base,$
-                                value=strcompress(string(i)),$
+for i=0, n_elements(orders)-1 do begin
+    checkbox[i+1] = widget_button(chck_base,$
+                                value=strcompress(string(orders[i])),$
                                 event_pro='xplot_multi_eventhand',$
                                 uvalue={object:xplot_multi,$
                                         method:'checkbox_events',$
                                         uval:strcompress(string(i))})
 endfor
+
+print, '============================'
+print, checkbox
+print, '============================'
+
 ;the display
 extDisp = cw_drip_xplot(tlb,xsize=xs,ysize=ys,mw=mw)
 id = widget_info(extDisp,/child)

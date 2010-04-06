@@ -67,7 +67,6 @@ if keyword_set(*data) then begin
     case value of
         'G1xG2':mode=0
         'G3xG4':mode=1
-        'G5xG6':mode=2
     endcase
     self.extman->multi_order,mode
     orders=self.extman->getdata(/orders)
@@ -535,8 +534,8 @@ g1xg2=widget_button(ext, value='G1xG2',$
                          uvalue={object:self, method:'multi_order'})
 g3xg4=widget_button(ext, value='G3xG4',$
                          uvalue={object:self, method:'multi_order'})
-;g5xg6=widget_button(ext, value='G5xG6',$
-;                         uvalue={object:self, method:'multi_order'})
+singord=widget_button(ext, value='Single Order',$
+                         uvalue={object:self, method:'multi_order'})
 ;-- table
 table=widget_base(self.topwid, /row)
 ; label

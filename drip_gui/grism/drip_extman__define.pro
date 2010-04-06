@@ -2,15 +2,33 @@ pro drip_extman::setmap,mode
 ; mode - grism mode
 ;         0 - g1xg2
 ;         1 - g3xg4
-;         2 - g5xg6
 
+
+;
+;
+;   Please sir, I'd like a header.
+;
+;
+;
+;
+;
+
+
+;  This case statement should actually come from the header file or master flat.
+; 
 case mode of
-    0:*self.map=[[164,214],[131,177],[100,144],[72,114],[47,88],[23,65],[0,42]]
-    1:*self.map=[[217,176],[189,146],[158,115],[127,79],[96,47],[68,17]]
-    2:*self.map=[[217,176],[189,146],[158,115],[127,79],[96,47],[68,17]]
+    0:begin
+        ;   [ [ [y0_bottom_left, y0_bottom_right], [y1_bl, y1_br], ...], [ [x0_left, x0_right], [x1_l, x1_r], ... ] ]
+         *self.map=[[[203, 235],[164,214],[131,177],[100,144],[72,114],[47,88],[23,65],[0,42]], $
+         [[0,159],[0,255],[0,255],[0,255],[0,255],[0,255],[0,255], [0,255]]]
+         *self.orders=[22, 21, 20, 19, 18, 17, 16, 15]
+      end
+    1:begin
+         *self.map=[[[137,229],[80,166],[34,114],[0, 68],[0, 33]], $
+         [[0,255],[0,255],[0,255],[23,255],[142,255]]]
+         *self.orders=[11, 10, 9, 8, 7]
+      end
 endcase
-
-self.orders=[4,(size(*self.map))[2] + 4 - 1]
 
 end
 ;******************************************************************************
@@ -25,26 +43,28 @@ data=*self.data
 dy=15                           ; height
 self->setmap,mode
 map=*self.map
-readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'
-help,orders,self.orders
-len=(size(map))[2]                ; number of extractions/orders
-pos=where(orders eq self.orders(0))
+readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  ; need to modify to include polynomial fits
+help,orders,*self.orders
+n_orders=(n_elements(*self.orders))                ; number of extractions/orders
+;pos=where(orders eq max(*self.orders))        ; where do we start? Max order = min wavelength
 avg=0
-for i=0,len-1 do begin
+for i=0,n_orders-1 do begin
     ;slope
-    slope= float(map(1,i)-map(0,i))/float(255-0)
+    pos = where( orders eq (*self.orders)[i])
+    print, 'Pos = '+string(pos)
+    slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
     ;xvalues
-    xvalue=findgen(256)
-    mx=float((lam_high(pos+i)-lam_low(pos+i)))/float(256)
-    wave=mx(0)*xvalue + (lam_low(pos+i))(0)
+    xvalue=findgen(map[1,i,1]-map[0,i,1])
+    mx=float((lam_high(pos)-lam_low(pos)))/float(map[1,i,1]-map[0,i,1])     ; Wavelength cal?
+    wave=mx(0)*xvalue + (lam_low(pos))(0)
     ;yvalues
     yvalue=round(slope*(xvalue))+map(0,i)
     ;extracted data
     extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+dy)],2)
-    for n= 1,255 do begin
+    for n= 1,n_elements(xvalue)-1 do begin
         extract=[extract,total(data[xvalue[n],yvalue[n]:(yvalue[n]+dy)],2)]
     end
-    if (i eq 0) then avg1=mean(extract)
+    if (i eq 0) then avg1=mean(extract)   ; Roughly averages spectra to be on the same scale...
     avg=mean(extract)
     davg=avg-avg1
     print,avg1,avg,davg
@@ -52,7 +72,6 @@ for i=0,len-1 do begin
     *self.allwave[i]=wave
     *self.allflux[i]=extract
 endfor
-;endif
 end
 ;******************************************************************************
 ;     Get Data - Send new sets of data
@@ -61,13 +80,12 @@ function drip_extman::getdata,data=data,$
                     extract=ext,dapsel_name=dapn,$
                     wave_num=wave_num, flux_num=flux_num,$
                     orders=orders
-
 if keyword_set(data) then  return, self.data
 if keyword_set(ext) then return, self.extract
 if keyword_set(dapn) then return, self.dapsel_name
-if keyword_set(wave_num) then return, *self.allwave[wave_num-self.orders(0)]
-if keyword_set(flux_num) then return, *self.allflux[flux_num-self.orders(0)]
-if keyword_set(orders) then return, self.orders
+if keyword_set(wave_num) then return, *self.allwave[abs((*self.orders)[0]-wave_num)]
+if keyword_set(flux_num) then return, *self.allflux[abs((*self.orders)[0]-flux_num)]
+if keyword_set(orders) then return, (*self.orders)
 
 end
 ;******************************************************************************
@@ -180,6 +198,8 @@ pro drip_extman::cleanup
 ;free pointers
 ptr_free,self.extract
 ptr_free,self.fileinfoval
+ptr_free,self.orders
+ptr_free,self.map
 end
 
 
@@ -198,6 +218,7 @@ self.extract=ptr_new(/allocate_heap)
 self.allflux=ptrarr(100,/allocate_heap)
 self.allwave=ptrarr(100,/allocate_heap)
 self.map=ptr_new(/allocate_heap)
+self.orders=ptr_new(/allocate_heap)
 self.boxx0=0
 self.boxy0=0
 self.boxx1=0
@@ -230,6 +251,6 @@ struct={drip_extman,$
         allflux:ptrarr(100),$   ;all flux data
         allwave:ptrarr(100),$   ;all wave data
         map:ptr_new(),$         ;list of y-coordinates for extraction
-        orders:[0,0],$          ;[least order, highest order]
+        orders:ptr_new(),$          ;[least order, highest order]
         n:0}
 end
