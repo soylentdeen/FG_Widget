@@ -67,6 +67,10 @@ if keyword_set(*data) then begin
     case value of
         'G1xG2':mode=0
         'G3xG4':mode=1
+        'G1'   :mode=2
+        'G3'   :mode=3
+        'G5'   :mode=4
+        'G6'   :mode=5
     endcase
     self.extman->multi_order,mode
     orders=self.extman->getdata(/orders)
@@ -531,17 +535,17 @@ ext=widget_button(headwid,value='Extract',/menu)
 ext2=widget_button(ext, value='Extract Selected Region', $
                           uvalue={object:self, method:'extract'} )
 g1=widget_button(ext, value='G1',$
-                         uvalue={object:self, method:'extract'})
+                         uvalue={object:self, method:'multi_order'})
 g1xg2=widget_button(ext, value='G1xG2',$
                          uvalue={object:self, method:'multi_order'})
 g3=widget_button(ext, value='G3',$
-                         uvalue={object:self, method:'extract'})
+                         uvalue={object:self, method:'multi_order'})
 g3xg4=widget_button(ext, value='G3xG4',$
                          uvalue={object:self, method:'multi_order'})
 g5=widget_button(ext, value='G5',$
-                         uvalue={object:self, method:'extract'})
+                         uvalue={object:self, method:'multi_order'})
 g6=widget_button(ext, value='G6',$
-                         uvalue={object:self, method:'extract'})
+                         uvalue={object:self, method:'multi_order'})
 ;-- table
 table=widget_base(self.topwid, /row)
 ; label

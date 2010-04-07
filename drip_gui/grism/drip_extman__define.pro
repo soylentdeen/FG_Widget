@@ -1,39 +1,68 @@
+; NAME:
+;     DRIP_ANALMAN_EXTRACT__DEFINE - Version .7.0
+;
+; PURPOSE:
+;     Analysis Object Manager for the GUI
+;
+; CALLING SEQUENCE:
+;     Obj=Obj_new('DRIP_ANALMAN_EXTRACT', BASEID)
+;
+; INPUTS:
+;     BASEID - Widget ID of base to put widgets
+;
+; STRUCTURE:
+;     TITLE - object title
+;     FOCUS - focus status (1 if in focus else 0)
+;     DISOBJ - display object
+;     BASEWID - base widget
+;
+
+
 pro drip_extman::setmap,mode
 ; mode - grism mode
-;         0 - g1xg2
-;         1 - g3xg4
-
-
-;
-;
-;   Please sir, I'd like a header.
-;
-;
-;
-;
-;
-
+;         0 - G1xG2
+;         1 - G3xG4
+;         2 - G1
+;         3 - G3
+;         4 - G5
+;         5 - G6
 
 ;  This case statement should actually come from the header file or master flat.
 ; 
 case mode of
     0:begin            ; G1xG2
         ;   [ [ [y0_bottom_left, y0_bottom_right], [y1_bl, y1_br], ...], [ [x0_left, x0_right], [x1_l, x1_r], ... ] ]
-         *self.map=[[[203, 235],[164,214],[131,177],[100,144],[72,114],[47,88],[23,65],[0,42]], $
+         *self.map=[[[202, 233],[162,210],[127,173],[98,144],[69,110],[46,84],[20,58],[0,38]], $
          [[0,159],[0,255],[0,255],[0,255],[0,255],[0,255],[0,255], [0,255]]]
+         *self.ord_height = [21, 21, 21, 21, 21, 21, 21, 18]
          *self.orders=[15, 16, 17, 18, 19, 20, 21, 22]
-         ;*self.orders=[22, 21, 20, 19, 18, 17, 16, 15]
       end
     1:begin            ; G3xG4
-         *self.map=[[[137,229],[80,166],[34,114],[0, 68],[0, 33]], $
-         [[0,255],[0,255],[0,255],[23,255],[142,255]]]
+         *self.map=[[[137,231],[80,164],[33,112],[0, 69],[1, 33]], $
+         [[0,255],[0,255],[0,255],[24,255],[141,255]]] 
+         *self.ord_height = [19, 19, 19, 19,17]
          *self.orders=[7, 8, 9, 10, 11]
-         ;*self.orders=[11, 10, 9, 8, 7]
       end
-    ;2:begin           ; G1
-    ;3:begin           ; G3
-    ;4:begin           ; G5
-    ;5:begin           ; G6
+    2:begin           ; G1
+         *self.map=[[[0,0]],[[0,255]]]
+         *self.ord_height = [255]
+         *self.orders=[1]
+      end
+    3:begin           ; G3
+         *self.map=[[[0,0]],[[0,255]]]
+         *self.ord_height = [255]
+         *self.orders=[1]
+      end
+    4:begin           ; G5
+         *self.map=[[[0,0]],[[0,255]]]
+         *self.ord_height = [255]
+         *self.orders=[1]
+      end
+    5:begin           ; G6
+         *self.map=[[[0,0]],[[0,255]]]
+         *self.ord_height = [255]
+         *self.orders=[2]
+      end
 endcase
 
 end
@@ -42,11 +71,7 @@ end
 ;******************************************************************************
 pro drip_extman::multi_order,mode
 
-;sz=n_elements(*self.data)
-;print,'size:',sz
-;if (sz gt 0) then begin
 data=*self.data
-dy=15                           ; height
 self->setmap,mode
 map=*self.map
 ;readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  ; need to modify to include polynomial fits
@@ -54,11 +79,21 @@ map=*self.map
 readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
 help,orders,*self.orders
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
-;pos=where(orders eq max(*self.orders))        ; where do we start? Max order = min wavelength
+
+;  Figures out which grism mode we are in
+case mode of
+   0: grmode_txt = 'G1xG2'
+   1: grmode_txt = 'G3xG4'
+   2: grmode_txt = 'G1'
+   3: grmode_txt = 'G3'
+   4: grmode_txt = 'G5'
+   5: grmode_txt = 'G6'
+endcase
+
 avg=0
 for i=0,n_orders-1 do begin
     ;slope
-    pos = where( orders eq (*self.orders)[i])
+    pos = where( (orders eq (*self.orders)[i]) and (grism_mode eq grmode_txt) )
     print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
     print, lam_high[pos], lam_low[pos]
     slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
@@ -69,9 +104,10 @@ for i=0,n_orders-1 do begin
     ;yvalues
     yvalue=round(slope*(xvalue))+map(0,i)
     ;extracted data
-    extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+dy)],2)
+    height = (*self.ord_height)[i]
+    extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+height)],2)
     for n= 1,n_elements(xvalue)-1 do begin
-        extract=[extract,total(data[xvalue[n],yvalue[n]:(yvalue[n]+dy)],2)]
+        extract=[extract,total(data[xvalue[n],yvalue[n]:(yvalue[n]+height)],2)]
     end
     if (i eq 0) then avg1=mean(extract)   ; Roughly averages spectra to be on the same scale...
     avg=mean(extract)
@@ -173,9 +209,7 @@ if keyword_set(boxx1) then self.boxx1= boxx1
 if keyword_set(boxy1) then self.boxy1= boxy1
 if keyword_set(boxx2) then self.boxx2=boxx2 else self.boxx2=0
 if keyword_set(boxy2) then self.boxy2=boxy2 else self.boxy2=0
-if keyword_set(map) then begin
-    *self.map=map
-endif
+if keyword_set(map) then *self.map=map
 
 end
 ;******************************************************************************
@@ -208,6 +242,7 @@ pro drip_extman::cleanup
 ptr_free,self.extract
 ptr_free,self.fileinfoval
 ptr_free,self.orders
+ptr_free,self.ord_height
 ptr_free,self.map
 end
 
@@ -228,6 +263,7 @@ self.allflux=ptrarr(100,/allocate_heap)
 self.allwave=ptrarr(100,/allocate_heap)
 self.map=ptr_new(/allocate_heap)
 self.orders=ptr_new(/allocate_heap)
+self.ord_height=ptr_new(/allocate_heap)
 self.boxx0=0
 self.boxy0=0
 self.boxx1=0
@@ -260,6 +296,7 @@ struct={drip_extman,$
         allflux:ptrarr(100),$   ;all flux data
         allwave:ptrarr(100),$   ;all wave data
         map:ptr_new(),$         ;list of y-coordinates for extraction
-        orders:ptr_new(),$          ;[least order, highest order]
+        orders:ptr_new(),$      ;[array with order numbers]
+        ord_height:ptr_new(),$  ;[array of order heights (in pixels)]
         n:0}
 end
