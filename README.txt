@@ -1,52 +1,19 @@
 FORCAST GRISM SPECTRAL REDUCTION/ANALYSIS
 
-This is a further test
-This is yet another test
-
 FG_WIDGET v1.3 README
 
-Last Update: March 16 2010
+Last Update: April 7th, 2010
 Luke Keller (Ithaca College: lkeller@ithaca.edu)
 Casey Deen  (University of Texas, Austin: deen@astro.as.utexas.edu)
 
-INSTALLATION INSTRUCTIONS:
-
-Download two files: fg_package_v1.3.tgz & DEMO_GRISM_DATA.tgz
-
-Unix (including Max OS X)
-
-    tar -zxf fg_package_v1.3.tgz (produces a directory called fg_package_v1.3)
-    tar -zxf DEMO_GRISM_DATA.tgz (produces a directory called DEMO_GRISM_DATA)
-
-    mv DEMO_GRISM_DATA fg_package_v1.3 (moves data into the same directory as
-	the IDL code)
-    
-PC (and Mac)
-
-    Use Zip or Stuffit to expand the file
-    copy DEMO_GRISM_DATA into the fg_package_v1.3 directory
-
-Make sure the directory (fg_package_v1.3) is FIRST in your IDL path either by manually adding it in your IDL path, by pointing IDL to it in the IDL
-Path Preferences, or by running the IDL batch file 'fgstart':
-
-IDL> @/yourpath/fg_package_v1.3/@fgstart.
-
 The main files of interest are:
 
-READMEv1.3          (you're reading it now)
+README          (you're reading it now)
 
-fg_package_v1.3/DEMO_GRISM_DATA  
-             
+DEMO_GRISM_DATA/
 		    (contains FORCAST grism test data and a README)
  
 fg_widget.pro       (starts the GUI up from the IDL command line):
-
-IDL> fg_widget
-
-NOTE: If you run fg_widget before setting up paths as above, you run
-the risk of a train wreck with existing IDL routines on your system
-(e.g. different versions of the Goddard Astrolib, different versions
-of FORCAST data reduction software, versions of SPEXTOOL, etc.).
 
 OVERVIEW:
 
@@ -88,7 +55,46 @@ of key strokes and mouse actions allow zooming and other scrutiny of the spectru
 
 10) Baseline fitting routines for continuum subtraction
 
-11) Extract all orders for cross-dispersed (G1xG2) mode in one click
+11) Extract all orders for cross-dispersed (G1xG2, G3xG4) and single order (G1, G3, G5, G6) modes in one click
+
+INSTALLATION INSTRUCTIONS:
+
+1) Download the tarball file: fg_package_v1.3.tgz
+
+Unix (including Max OS X)
+
+    tar -zxf fg_package_v1.3.tgz (produces a directory called FG_Widget)
+
+PC (and Mac)
+
+    Use Zip or Stuffit to expand the file
+
+2) Modify the IDL batch file "fg_start" to reflect your system parameters
+
+For example, the default contents of fg_start are:
+-----------------
+device, true_color=24
+device, decomposed=1
+device, retain=2
+!PATH= '+/absolute/path/to/FG_Widget:+'+!dir
+!PATH=EXPAND_PATH(!PATH,/all_dirs)
+cd,'/absolute/path/to/FG_Widget/'
+
+replace /absolute/path/to/ with the absolute path to the FG_Widget directory appropriate for your system. (e.g. /home/deen/Code/IDL/FORCAST/).  Save this file.
+
+
+3) Start up IDL and run the batch file 'fgstart':
+
+IDL> @/yourpath/FG_Widget/@fgstart.
+
+4) Now, you are ready to launch fg_widget!
+
+IDL> fg_widget
+
+    NOTE: If you run fg_widget before setting up paths as above, you run
+the risk of a train wreck with existing IDL routines on your system
+(e.g. different versions of the Goddard Astrolib, different versions
+of FORCAST data reduction software, versions of SPEXTOOL, etc.).
 
 
 OPERATING INSTRUCTIONS to load FORCAST test data and extract a spectrum
@@ -131,7 +137,7 @@ With the cursor in the plot window, click 'h' for a listing of functions.
 9) Repeat steps 5-7 as many times as you like. To extract or view a particular 
 ROI just press the 'Extract' button for that region.
 
-OR use the 'Extract --> G1xG2' button to extract all orders at once.
+10) OR use the 'Extract --> G1xG2' button to extract all orders at once.  For single order modes, use 'Extract --> G1' to extract a roughly wavelength calibrated spectrum.
 
 10) To save your extracted spectrum, use the 'SAVE' button to the left
 of the Extract button. Choose ASCII, PS, or FITS. The file format
@@ -149,11 +155,11 @@ Use 'File'-->'Quit' to exit to the IDL prompt
 
 FUNCTION UPDATE LIST (with status in parenthesis)*:
 
--- Auto extract all 6 FORCAST Grism modes (G1 and G1xG2 DONE. Other modes awaiting next round of lab tests)
+-- Auto extract all 6 FORCAST Grism modes (DONE)
 
 -- Save and restore wavelength calibrations for all 6 FORCAST Grism modes (coding in progress)
 
--- Generate flatfield templates for both cross-dispersed modes (G1xG2 DONE)
+-- Generate flatfield templates for both cross-dispersed modes (DONE)
 
 -- Optimal extraction of spectra from the ROI (Fully coded, not integrated)
 
