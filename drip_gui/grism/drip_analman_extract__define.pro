@@ -530,12 +530,18 @@ saveps=widget_button(save, value='PostScript...',$
 ext=widget_button(headwid,value='Extract',/menu)
 ext2=widget_button(ext, value='Extract Selected Region', $
                           uvalue={object:self, method:'extract'} )
+g1=widget_button(ext, value='G1',$
+                         uvalue={object:self, method:'extract'})
 g1xg2=widget_button(ext, value='G1xG2',$
                          uvalue={object:self, method:'multi_order'})
+g3=widget_button(ext, value='G3',$
+                         uvalue={object:self, method:'extract'})
 g3xg4=widget_button(ext, value='G3xG4',$
                          uvalue={object:self, method:'multi_order'})
-singord=widget_button(ext, value='Single Order',$
-                         uvalue={object:self, method:'multi_order'})
+g5=widget_button(ext, value='G5',$
+                         uvalue={object:self, method:'extract'})
+g6=widget_button(ext, value='G6',$
+                         uvalue={object:self, method:'extract'})
 ;-- table
 table=widget_base(self.topwid, /row)
 ; label

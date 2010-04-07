@@ -17,17 +17,23 @@ pro drip_extman::setmap,mode
 ;  This case statement should actually come from the header file or master flat.
 ; 
 case mode of
-    0:begin
+    0:begin            ; G1xG2
         ;   [ [ [y0_bottom_left, y0_bottom_right], [y1_bl, y1_br], ...], [ [x0_left, x0_right], [x1_l, x1_r], ... ] ]
          *self.map=[[[203, 235],[164,214],[131,177],[100,144],[72,114],[47,88],[23,65],[0,42]], $
          [[0,159],[0,255],[0,255],[0,255],[0,255],[0,255],[0,255], [0,255]]]
-         *self.orders=[22, 21, 20, 19, 18, 17, 16, 15]
+         *self.orders=[15, 16, 17, 18, 19, 20, 21, 22]
+         ;*self.orders=[22, 21, 20, 19, 18, 17, 16, 15]
       end
-    1:begin
+    1:begin            ; G3xG4
          *self.map=[[[137,229],[80,166],[34,114],[0, 68],[0, 33]], $
          [[0,255],[0,255],[0,255],[23,255],[142,255]]]
-         *self.orders=[11, 10, 9, 8, 7]
+         *self.orders=[7, 8, 9, 10, 11]
+         ;*self.orders=[11, 10, 9, 8, 7]
       end
+    ;2:begin           ; G1
+    ;3:begin           ; G3
+    ;4:begin           ; G5
+    ;5:begin           ; G6
 endcase
 
 end
@@ -43,7 +49,9 @@ data=*self.data
 dy=15                           ; height
 self->setmap,mode
 map=*self.map
-readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  ; need to modify to include polynomial fits
+;readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  ; need to modify to include polynomial fits
+;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', comment = '#', delimiter=','
+readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
 help,orders,*self.orders
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
 ;pos=where(orders eq max(*self.orders))        ; where do we start? Max order = min wavelength
@@ -51,7 +59,8 @@ avg=0
 for i=0,n_orders-1 do begin
     ;slope
     pos = where( orders eq (*self.orders)[i])
-    print, 'Pos = '+string(pos)
+    print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
+    print, lam_high[pos], lam_low[pos]
     slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
     ;xvalues
     xvalue=findgen(map[1,i,1]-map[0,i,1])

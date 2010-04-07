@@ -327,7 +327,7 @@ checkbox(n) = widget_button(chck_base,$
                                     uval:'all'})
 for i=0, n_elements(orders)-1 do begin
     checkbox[i+1] = widget_button(chck_base,$
-                                value=strcompress(string(orders[i])),$
+                                value=strcompress(string(max(orders)-i)),$
                                 event_pro='xplot_multi_eventhand',$
                                 uvalue={object:xplot_multi,$
                                         method:'checkbox_events',$
