@@ -62,12 +62,17 @@ INSTALLATION INSTRUCTIONS:
 1) Download the following:
 
       source tarball file: fg_package_v1.3.tar.gz
-      demo data tarball file: DEMO_GRISM_DATA_v1.3.tar.gz
+      demo data tarball files:
+            DEMO_G1_DATA_v1.3.tar.gz    <- contains G1 and G1xG2 data
+            DEMO_G3_DATA_v1.3.tar.gz    <- contains G3 and G3xG4 data
+            DEMO_LWC_DATA_v1.3.tar.gz   <- contains G5 and G6 data
 
 Unix (including Max OS X)
 
     tar -zxf fg_package_v1.3.tar.gz (produces a directory called FG_Widget)
-    tar -zxf DEMO_GRISM_DATA_v1.3.tar.gz (unzips demo data into a DEMO_GRISM_DATA_v1.3 directory within FG_Widget)
+    tar -zxf DEMO_G1_DATA_v1.3.tar.gz (unzips demo data into a DEMO_GRISM_DATA_v1.3/G1, G1xG2 directories within FG_Widget)
+    tar -zxf DEMO_G3_DATA_v1.3.tar.gz (unzips demo data into a DEMO_GRISM_DATA_v1.3/G3, G3xG4 directories within FG_Widget)
+    tar -zxf DEMO_LWC_DATA_v1.3.tar.gz (unzips demo data into a DEMO_GRISM_DATA_v1.3/G5, G6 directories within FG_Widget)
 
 PC (and Mac)
 
