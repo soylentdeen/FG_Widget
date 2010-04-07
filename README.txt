@@ -59,15 +59,38 @@ of key strokes and mouse actions allow zooming and other scrutiny of the spectru
 
 INSTALLATION INSTRUCTIONS:
 
-1) Download the tarball file: fg_package_v1.3.tgz
+1) Download the following:
+
+      source tarball file: fg_package_v1.3.tar.gz
+      demo data tarball file: DEMO_GRISM_DATA_v1.3.tar.gz
 
 Unix (including Max OS X)
 
-    tar -zxf fg_package_v1.3.tgz (produces a directory called FG_Widget)
+    tar -zxf fg_package_v1.3.tar.gz (produces a directory called FG_Widget)
+    tar -zxf DEMO_GRISM_DATA_v1.3.tar.gz (unzips demo data into a DEMO_GRISM_DATA_v1.3 directory within FG_Widget)
 
 PC (and Mac)
 
-    Use Zip or Stuffit to expand the file
+    Use Zip or Stuffit to expand the two files.
+
+Your top-level directory structure should look similar to the following:
+
+<FG_Widget>
+   <.>
+   <..>
+   <DEMO_GRISM_DATA_v1.3>
+   <drip_common>
+   <drip_gui>
+   <drip_libs>
+   <mode_c2n>
+   <mode_stare>
+   dripconf.txt
+   fg_start
+   guiconf.txt
+   README.txt
+   README_v1.3.txt
+
+(where <directory> is a sub-directory)
 
 2) Modify the IDL batch file "fg_start" to reflect your system parameters
 
