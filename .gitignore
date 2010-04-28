@@ -5,5 +5,5 @@ fg_start
 .DS_Store
 guiconf.txt
 dripconf.txt
-guiconf.txt
-dripconf.txt
+FG_Widget/guiconf.txt
+FG_Widget/dripconf.txt
