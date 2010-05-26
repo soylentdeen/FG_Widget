@@ -76,7 +76,8 @@ self->setmap,mode
 map=*self.map
 ;readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  ; need to modify to include polynomial fits
 ;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', comment = '#', delimiter=','
-readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
+readcol, 'drip_gui/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, Coeff_2, Coeff_3, FORMAT='A,I,F,F,F,F', skipline = 1
+;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
 help,orders,*self.orders
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
 
@@ -95,13 +96,19 @@ for i=0,n_orders-1 do begin
     ;slope
     pos = where( (orders eq (*self.orders)[i]) and (grism_mode eq grmode_txt) )
     print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
-    print, lam_high[pos], lam_low[pos]
+    ;print, lam_high[pos], lam_low[pos]
     slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
     ;xvalues
     xvalue=findgen(map[1,i,1]-map[0,i,1])
-    mx=float((lam_high(pos)-lam_low(pos)))/float(map[1,i,1]-map[0,i,1])     ; Wavelength cal?
-    wave=mx(0)*xvalue + (lam_low(pos))(0)
+    ;mx=float((lam_high(pos)-lam_low(pos)))/float(map[1,i,1]-map[0,i,1])     ; Wavelength cal?
+    ;wave=mx(0)*xvalue + (lam_low(pos))(0)
+    C0 = coeff_0[pos]
+    C1 = coeff_1[pos]
+    C2 = coeff_2[pos]
+    C3 = coeff_3[pos]
+    wave = C0[0] + C1[0]*xvalue + C2[0]*(xvalue)^2.0 + C3[0]*(xvalue)^3.0
     ;yvalues
+    print, wave
     yvalue=round(slope*(xvalue))+map(0,i)
     ;extracted data
     height = (*self.ord_height)[i]

@@ -52,7 +52,7 @@
 ;                 Added logfile capability
 ;                 Nirbhik Chitrakar, Ithaca College
 ;                   converted to extract
-;                   logfile removied, 11/2006
+;                   logfile removed, 11/2006
 ;****************************************************************************
 ;     Display - Displays the buffer - doesnt extract
 ;****************************************************************************
