@@ -108,7 +108,7 @@ pro drip::setdata, mode=mo, n=n, readme=rm, $
         pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
         badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
         cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $  ;LIN
-        merged=md, coadded=co, coadded_rot=cor, lastcoadd=lc, $
+        merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $
         badmap=bm, darks=ds, cleanddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
         masterflat=mf, lincor=lnc ;LIN
 
@@ -131,7 +131,7 @@ if keyword_set(fl) then *self.flatted=fl
 if keyword_set(st) then *self.stacked=st
 if keyword_set(ud) then *self.undistorted=ud
 if keyword_set(md) then *self.merged=md
-if keyword_set(co) then *self.coadded=co
+if keyword_set(coa) then *self.coadded=coa
 if keyword_set(cor) then *self.coadded_rot=cor
 if keyword_set(lc) then *self.lastcoadd=lc
 if keyword_set(bm) then *self.badmap=bm
@@ -153,7 +153,7 @@ function drip::getdata, mode=mo, n=n, readme=rm, $
              pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
              badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
              cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $ ;LIN
-             merged=md, coadded=co, coadded_rot=cor, lastcoadd=lc, $
+             merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $
              badmap=bm, darks=ds, cleaneddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
              masterflat=mf, lincor=lnc ;LIN
 
@@ -176,7 +176,7 @@ if keyword_set(fl) then return, *self.flatted
 if keyword_set(st) then return, *self.stacked
 if keyword_set(ud) then return, *self.undistorted
 if keyword_set(md) then return, *self.merged
-if keyword_set(co) then return, *self.coadded
+if keyword_set(coa) then return, *self.coadded
 if keyword_set(cor) then return, *self.coadded_rot
 if keyword_set(lc) then return, *self.lastcoadd
 if keyword_set(bm) then return, *self.badmap
@@ -195,7 +195,7 @@ structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
            data:*self.data, cleaned:*self.cleaned, badflags:*self.badflags, $
            linearized:*self.linearized, flatted:*self.flatted, stacked:*self.stacked, $ ;LIN
            undistorted:*self.undistorted, merged:*self.merged, $
-           coadded:*self.coadded,coadded_rot:rot(*self.coadded,90),$
+           coadded:*self.coadded,coadded_rot:fltarr(256,256), $    ; CHANGED from coadded_rot:rot(..., 90)
            lastcoadd:*self.lastcoadd, badmap:*self.badmap, darks:*self.darks, $
            cleaneddarks:*self.cleaneddarks, darksum:*self.darksum, flats:*self.flats, $
            lincor:*self.lincor, $ ;LIN
@@ -211,7 +211,7 @@ end
 ;******************************************************************************
 
 pro drip::load, filename, masterflat=mf, cleaned=cl, linearized=lnr, flatted=fl, stacked=st, $ ;LIN
-                undistort=ud, merged=md, coadded=co, coadded_rot=cor
+                undistort=ud, merged=md, coadded=coa, coadded_rot=cor
 
 ; error check
 s=size(filename)
@@ -250,7 +250,7 @@ endif else if keyword_set(md) then begin
     fname=self.pathload+strmid(self.filename,0,namepos)+'_merged.fits'
     data=self.merged
     head=self.header
-endif else if keyword_set(co) then begin
+endif else if keyword_set(coa) then begin
     fname=self.pathload+strmid(self.filename,0,namepos)+'_coadded.fits'
     data=self.coadded
     head=self.basehead
@@ -331,12 +331,12 @@ pro drip::findcal
 ; to be reduced.
 
 fitsdir,file_names, keyvalue, self.pathload, t=self.pathload+'fitsdir.txt', $
-  /nosize, keywords='INSTMODE, INSTCFGN, DATE-OBS, TIME-OBS'
+  /nosize, keywords='INSTMODE, INSTCFGN, DATE-OBS, TIME-OBS, OBJNAME'
 icfg=drip_getpar(*self.basehead,'INSTCFGN')
 
 ; find most recent FLAT files with INSTCFGN matching current data file
 ; first check if any flat file are present in the data directory
-if (n_elements(flat_list) gt 0) then begin
+if (n_elements(file_names) gt 0) then begin
     flat_list=file_names(where(keyvalue[*,0] eq 'FLAT' and keyvalue[*,1] eq icfg))
     key_list1=keyvalue[where(keyvalue[*,0] eq 'FLAT' and keyvalue[*,1] eq icfg),*]
     ; Sort by date
@@ -477,14 +477,14 @@ endif else begin
 endelse
 ;** make master flat
 ; make darksum
-*self.cleaneddarks=drip_clean(*self.darks,*self.badmap)
+*self.cleaneddarks=drip_clean(*self.darks,*self.badmap,*self.basehead)
 drip_message,'drip::getcal - done cleaning darks'
 s=size(*self.cleaneddarks)
 if s[0] gt 2 then darksum=total(*self.cleaneddarks,3)/s[3] else darksum=*self.cleaneddarks
 *self.darksum=darksum
 
 ; make flatsum
-*self.cleanedflats=drip_clean(*self.flats,*self.badmap)
+*self.cleanedflats=drip_clean(*self.flats,*self.badmap,*self.basehead)
 drip_message,'drip::getcal - done cleaning flats'
 ;Apply ordermask to flatfield: used for grism mode (if grism mode
 ;detected) to ignore inter-order pixels when calculating median values
@@ -573,10 +573,10 @@ end
 
 pro drip::reduce
 ; This procedure is only used if there is no INSTMODE specified
-; that has its own pipeline definition (e.g. c2n__define.pro for INSTMODE='C2N'
+; that has its own pipeline definition (e.g. c2n__define.pro for INSTMODE='C2N')
 
 ; clean
-*self.cleaned=drip_clean(*self.data,*self.badmap)
+*self.cleaned=drip_clean(*self.data,*self.badmap,*self.basehead)
 ; nonlin
 *self.linearized=drip_nonlin(*self.cleaned,*self.lincor)     ;LIN
 ; flat
@@ -586,7 +586,7 @@ pro drip::reduce
 ; undistort
 *self.undistorted=drip_undistort(*self.stacked,*self.header,*self.basehead)
 ; merge
-*self.merged=drip_merge(*self.undistorted,*self.header)
+*self.merged=drip_merge(*self.undistorted,*self.flatted,*self.header,*self.basehead)
 ; coadd
 if self.n gt 0 then begin
     *self.lastcoadd=*self.coadded

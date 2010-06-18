@@ -35,7 +35,8 @@
 ;                 Renamed all modes
 ;   Modified:     Marc Berthoud, Palomar, September 2007
 ;                 Added use of RA and DEC for noding and dithering
-;
+;   Modified:     Luke Keller, Ithaca College June 2010
+;                 Added option to coadd using cross correlation of frames
 
 ;******************************************************************************
 ;     DRIP_COADD - Merges data frames
@@ -70,7 +71,26 @@ switch mode of
     'C2': ; 2 position chop
     'C2N':begin ; 2 position chop with nod
         if keyword_set(first) then newcoadded=newdata $
-          else newcoadded=coadded+newdata
+        else begin
+        cormerge=drip_getpar(header,'CORMERGE') ; Keyword replace flag for merge method:
+                                               ; CORMERGE = 'Y' then use
+                                               ; cross-correlation
+                                               ; CORMERGE = 'N' then use
+                                               ; nominal nod and chop positions
+        ; Use cross correlation to align images                                      
+        if (cormerge eq 'COR' OR cormerge eq 'CENT') then begin 
+           drip_message,'drip_coadd - Using cross-correlation to coadd frames'
+           cmat=correl_images(coadded, newdata, xoff=0, yoff=0, xshift=20, yshift=20)
+           corrmat_analyze, cmat, xopt, yopt, XOFF_INIT=0, YOFF_INIT=0           
+           newcoadded=coadded+shift(newdata,xopt,yopt)
+        ;endif
+        ;if cormerge eq 'CENT' then begin ; Use centroids to align images
+        ;   ;centdata = odata[*,0:254]
+        ;   origin=find_peak_all(odata)
+        ;   cormerged=origin
+        ;   newcoadded=coadded+
+        endif else newcoadded=coadded+newdata
+        endelse
         break
     end
     'C2ND': ; C2N with Dither
@@ -96,8 +116,9 @@ switch mode of
         decoff=newdec-basedec
         ; convert to seconds then pixels (remember 2x subsampled to match coadd frame format)
         ;arcsecppix=0.43 ; palomar 2007
-        arcsecppix=0.75 ; assume telescope is SOFIA
+        arcsecpix=0.75 ; assume telescope is SOFIA
         telescope=drip_getpar(header,'TELESCOP') ; to determine plate scale
+        if telescope eq 'PIXELS' then arcsecpix=1.0
         
         raoff=2.0*3600.0*raoff/arcsecppix
         decoff=2.0*3600.0*decoff/arcsecppix

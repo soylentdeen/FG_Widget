@@ -63,7 +63,7 @@ if sc[0] gt 2 then begin
     drip_message, 'Done with faltfield linearity correction'
     endif
 endif else begin
-    linearized=data 
+    linearized=data
 endelse
 linearized=data  ; for now since linearity coeffs are too old 02/01/2010
 return, linearized

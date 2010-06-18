@@ -79,7 +79,7 @@ switch otmode of
             endfor        
         endif else begin
           posdata=data
-          print,size(posdata)
+          ;print,size(posdata)
         endelse
         break
     end
