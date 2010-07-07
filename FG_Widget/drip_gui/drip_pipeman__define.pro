@@ -1,42 +1,39 @@
 ; NAME:
-;     DRIP_PIPEMAN - Version .7.0
+;     DRIP_PIPEMAN - Version 1.7.0
 ;
 ; PURPOSE:
 ;     Pipeline manager for the GUI
 ;
-; DEFINITIONS
+; DEFINITIONS:
 ;     PIPE = data reduction PIPEline
 ;            object for data reduction
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_PIPEMAN',dataman)
-;     Obj->START
-;
-; INPUTS:
-;     DATAMAN - data manager to handle data to
-;
-; STRUCTURE:
-;     {DRIP_DATAMAN, DISP_OBJS, FRAME_INDEX, STRUCTURE}
-;     DISP_OBJS - DRIP_DISP object references (from cw_drip_disp widgets)
-;     PIPE_STEPS - the dripipeline output structure (see DRIP__DEFINE::GETDATA)
-;     PIPE_STEPS_SUM SUMSTRUCT - sum of previous drip outputs
-;     DEC_OLD - old decomposition state (to restore it)
-;     MW - message window object
-;     N - counter used for averaging running sums
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
+;   USER INTERFACE: PIPEMAN reacts to user input through menus,
+;                   GUI buttons and popup dialogs
+;   DRIP: Used as pipeline to reduce data
+;   CW_DRIP_MW: Used to send messages to the user
+;   DRIP_ANAL_SELECT: PIPEMAN updates selected displays when new data
+;                     is reduced
+;   DRIP_DATAMAN: Is used to store all reduced data
+;   DRIP_AUTOMAN: calls PIPEMAN::AUTO_OPEN and ::RUN with new files
+;   DRIP_MENU: checks PIPEMAN.SAVEFLAG when exiting
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     New data files are first opened, then reduced (RUN). This can be
+;     done by the user throught the GUI or by DRIP_AUTOMAN if the GUI
+;     is in automatic reduction mode. All reduced data is stored in
+;     DATAMAN, such that it is available to the GUI displays through
+;     DRIP_ANAL_SELECT objects. The same objects are notified if new
+;     data is available through the CHANNELCALL process of
+;     DATAMAN. Various menu items allow configuration of the data
+;     reduction pipeline and the selection of the reduction steps to
+;     display.
 ;
 ; RESTRICTIONS:
 ;     None
-;
-; PROCEDURE:
-;     Contain data regarding current, open data reduction pipeline,
-;     handle pipeline events.
 ;
 ; MODIFICATION HISTORY:
 ;     Written by: Marc Berthoud, Cornell University, July 2006
@@ -46,6 +43,9 @@
 ;                 images)
 ;     Modified: Nirbhik Chitrakar, Cornell Univerisity, August 2006
 ;               - added saveflag for unsaved reduced data
+;     Modified: Luke Keller, Ithaca College, June 2010
+;               - Added REGISTER_FRAMES, Pipeline pulldown includes
+;                 selection of method to register frames in merge and coadd
 
 
 ;******************************************************************************
@@ -57,8 +57,9 @@ function drip_pipeman::getdata, saveflag=sf
 if keyword_set(sf) then return, self.saveflag
 
 end
+
 ;******************************************************************************
-;     RESET - Reset daps
+;     RESET - Reset manager (also pipe count)
 ;******************************************************************************
 
 pro drip_pipeman::reset
@@ -135,7 +136,7 @@ filelist=dialog_pickfile(filter=*self.loadfilter, file=self.lastfile, $
       /fix_filter, /multiple_files, /must_exist, /read, get_path=path, $
       path=self.loaddatapath, dialog_parent=event.top)
 if (filelist[0] ne '') then begin
-    ; make new drip object with file list, initialize file list
+    ; if n==0, make new drip object with file list, initialize file list
     if self.n eq 0 then begin
         drip=drip_new(filelist) ;create drip object
         if drip ne obj_new() then begin
@@ -160,7 +161,6 @@ if (filelist[0] ne '') then begin
           file_basename(filelist[sz-1]) + ' added to filelist' $
         else self.mw->print, 'file ' + file_basename(filelist) + $
           ' added to filelist'
-        print,self.n,self.ind,*self.filelist
     endif else begin
         msg='Error: open could not initialize pipe from ' + $
           file_basename(filelist[0])
@@ -195,9 +195,9 @@ repeat begin ;reduce, display, increment
     ; get filename from filelist (for messages)
     fileonly=file_basename((*self.filelist)[self.ind])
     ; reduce data -> get new pipe steps
-    self.mw->print, 'reducing file ' + fileonly
+    self.mw->print, 'Reducing file ' + fileonly
     self.drip->run,(*self.filelist)[self.ind]
-    self.mw->print, 'finished reducing file ' + fileonly
+    self.mw->print, 'Finished reducing file ' + fileonly
     self.ind=self.ind+1
     pipe_steps=self.drip->getdata()
     ; check if it's first reduced file ind==1
@@ -253,25 +253,29 @@ end
 ;******************************************************************************
 
 pro drip_pipeman::stepback, event
-if self.cnt gt 0 then begin
+if self.cnt gt 1 then begin
     ; step back in drip
     self.drip->stepback
-    ; subtract old data from current sum
+    ; get last pipe and sum DAP
     pipe_dap=self.dataman->getdap(self.name)
     sum_dap=self.dataman->getdap(self.name+'_sum')
     if (ptr_valid(pipe_dap) gt 0) and (ptr_valid(sum_dap) gt 0) then begin
+        ; subtract pipe from sum for all elements with >1 dimensions
         ntags=n_tags(*pipe_dap)
         for i=0,ntags-1 do begin
             if size((*pipe_dap).(i),/n_dimensions) gt 1 then $
               (*sum_dap).(i)=(*sum_dap).(i)-(*pipe_dap).(i)
         endfor
+        ; adjust file counter
         self.cnt=self.cnt-1
     endif
     ; set stepped back data
     pipe_steps=self.drip->getdata()
     self.dataman->setdap,self.name,pipe_steps
     self.dataman->channelcall
-endif
+    ; message
+    self.mw->print,'Reduction of last file was undone'
+ endif else self.mw->print,'Can not undo if only one file has been coadded'
 end
 
 ;******************************************************************************
@@ -291,7 +295,8 @@ if (self.ind gt 0) then begin
     ; save file
     if filename ne '' then begin
         self.savepath=path
-        self.drip->save, filename=filename
+        ; /stacked to save 'stacked' pipestep image
+        self.drip->save, filename=filename ;, /stacked 
         print,'saved reduced image: ', filename
         self.mw->print, 'saved reduced image.'
         self.saveflag=1
@@ -305,39 +310,43 @@ end
 ;******************************************************************************
 
 pro drip_pipeman::dripconf_edit, event
+; get drip configuration
 common drip_config_info, dripconf
+; open the edit window
 edit_string_list, dripconf, $
   comment='Edit Drip Configuration:'
 end
 
 ;******************************************************************************
-;     DISPCONF - configure pipeline -> display behaviour
+;     DISPCONF - event function for displays configuration dialog window
 ;******************************************************************************
 
 pro drip_pipeman::dispconf, event
+; Setup: number of displays and list of possible data frames, get fonts
 dispn=size(*self.disp_sels,/n_elements)
 framelist=['None','Data','Cleaned','Badflags','Flatted','Stacked', $
            'Undistorted','Merged','Coadded','Badmap','Masterflat']
 framen=size(framelist,/n_elements)
 common gui_os_dependent_values, largefont, smallfont
+; Execute widget events
 case event.id of
     ; Menu: make popup window
     (*self.dispconfstat).menu:begin
+        ; Check if window is already open (i.e. stat=1) and dispn > 0
         if ((*self.dispconfstat).stat eq 0) and (dispn gt 0) then begin
-            ; setup list
-            ; set selection indices
+            ; set selection indices of previous settings
             for dispi=0, dispn-1 do begin
                 ind=where(framelist eq (*self.dispnewpipe)[dispi])
                 if ind gt -1 then (*self.dispconfstat).dispsel[dispi]=ind $
                 else (*self.dispconfstat).dispsel[dispi]=0
             endfor
-            ; make widgets
+            ; make label and text widgets
             top=widget_base(/column)
             label=widget_label(top,font=largefont,value='Display Options:')
             info0=widget_label(top,value='Pipeline steps set below will be')
             info1=widget_label(top,value='automatically displayed whenever')
             info2=widget_label(top,value='new data is reduced')
-            ; selection widgets
+            ; make selection widgets
             for dispi=0, dispn-1 do begin
                 title='Display '+string(byte('A')+byte(dispi))
                 (*self.dispconfstat).dispdrop[dispi]=widget_droplist(top, $
@@ -345,7 +354,7 @@ case event.id of
                      uvalue={object:self, method:'dispconf'}, $
                      title=title )
             endfor
-            ; buttons
+            ; make button widgets
             row=widget_base(top,/row)
             (*self.dispconfstat).done=widget_button(row, value='Done', $
               event_pro='drip_eventhand', $
@@ -399,20 +408,53 @@ end
 ;     VIEWHEAD - Show Fits Header of Current Pipe
 ;******************************************************************************
 pro drip_pipeman::viewhead, event
+; Check if data is available
 if self.cnt gt 0 then begin
+    ; Get get correct header
     widget_control, event.id, get_value=value
     pipe_dap=self.dataman->getdap(self.name)
     if strpos(value,'Base') gt -1 then $
       head=(*pipe_dap).basehead else head=(*pipe_dap).header
+    ; Open edit window
     edit_param_list, head, $
       comment='WARNING: this window is not updated as new images are loaded', $
       /viewonly
 endif else begin
+    ; No data available -> print message in message window
     self.mw->print, $
       'PipeMan::ViewHead - no header available, current pipe has no data'
 endelse
 end
 
+;******************************************************************************
+;     REGISTER_FRAMES - Register frames using cross-cor, centroid, or default data
+;              
+;******************************************************************************
+pro drip_pipeman::register_frames, event
+
+widget_control, event.id, get_value=value
+common drip_config_info, dripconf
+
+case value of
+    'Cross Correlation':begin
+        drip_message,'drip_pipeman - Registering frames with cross correlation'
+        setpar, dripconf, 'cormerge', 'COR'
+ 
+     break
+     end
+     'Centroid':begin
+        drip_message,'drip_pipeman - Registering frames with centroid'
+        setpar, dripconf, 'cormerge', 'CENT'
+     break
+     end
+     'Chop/Nod Data Only':begin
+        drip_message,'drip_pipeman - Registering frames with nominal Chop/Nod positions'
+        setpar, dripconf, 'cormerge', 'N'
+     break
+     end
+endcase
+end
+            
 ;******************************************************************************
 ;     START - Makes widgets
 ;             Parameters: requires menu bar and on-screen base widget id
@@ -429,6 +471,18 @@ new=widget_button(pipe_menu, value='New Pipe', event_pro='drip_eventhand', $
       uvalue={object:self, method:'new'}, /separator )
 open=widget_button(pipe_menu, value='Open Forcast File(s) ...', $
       event_pro='drip_eventhand', uvalue={object:self, method:'open'})
+
+; Choose method of image registration for merge and coadd
+; Need to add indication of the current selection
+; Method should set the 'cormerge' keyword
+register=widget_button(pipe_menu, value='Auto-register Chop/Nod', /menu)
+register_sub=widget_button(register, value='Cross Correlation', $
+      event_pro='drip_eventhand', uvalue={object:self,method:'register_frames'} )
+register_sub=widget_button(register, value='Centroid', $
+      event_pro='drip_eventhand', uvalue={object:self,method:'register_frames'} )
+register_sub=widget_button(register, value='Chop/Nod Data Only', $
+      event_pro='drip_eventhand', uvalue={object:self,method:'register_frames'} )
+           
 reduce=widget_button(pipe_menu, value='Reduce', event_pro='drip_eventhand', $
       uvalue={object:self, method:'run'})
 back=widget_button(pipe_menu, value='Step Back', event_pro='drip_eventhand', $
@@ -451,14 +505,17 @@ lab=widget_label(ctrlbase1, value=" Pipeline Control : ", /frame, $
       font=largefont)
 new=widget_button(ctrlbase1, value='New Pipe', event_pro='drip_eventhand', $
       uvalue={object:self, method:'new'}, /sensitive, $
-      font=largefont, ysize=30)
+      font=mediumfont, ysize=25)
 open=widget_button(ctrlbase1, value='Open File(s)', $
       event_pro='drip_eventhand', $
       uvalue={object:self, method:'open'}, /sensitive, $
-      font=largefont, ysize=30)
+      font=mediumfont, ysize=25)
 reduce=widget_button(ctrlbase1, value='Reduce', event_pro='drip_eventhand', $
       uvalue={object:self, method:'run'}, /sensitive, $
-      font=largefont, ysize=30)
+      font=mediumfont, ysize=25)
+stepback=widget_button(ctrlbase1, value='Step Back', event_pro='drip_eventhand', $
+      uvalue={object:self, method:'stepback'}, /sensitive, $
+      font=mediumfont, ysize=25)
 ;** get displays information - setup display configuration status
 if keyword_set(disp_sels) then begin
     ; get displays
@@ -479,11 +536,10 @@ endif else begin
     ; no displays available - set status to 0
     *self.dispconfstat={stat:0, menu:dispconfid}
 endelse
-; make / set disp_setup_stat
 end
 
 ;******************************************************************************
-;     CLEANUP
+;     CLEANUP - Free pointer heap variables, save settings
 ;******************************************************************************
 
 pro drip_pipeman::cleanup
@@ -505,10 +561,12 @@ ptr_free, self.loadfilter
 ptr_free, self.dispnewpipe
 ptr_free, self.dispconfstat
 if obj_valid(self.drip) then obj_destroy, self.drip
+; Destroy mw object
+obj_destroy, self.mw
 end
 
 ;******************************************************************************
-;     INIT
+;     INIT - Initialize structure
 ;******************************************************************************
 
 function drip_pipeman::init, dataman, mw
@@ -522,7 +580,8 @@ self.filelist=ptr_new(/allocate_heap)
 ; set load filter
 self.loadfilter=ptr_new(/allocate_heap)
 *self.loadfilter=['*.fits','*.fit','*.fts']
-; get loaddatapath and savepath (check if entry is valid and path exists)
+; get loaddatapath and savepath
+; (check if entries are valid and paths exist)
 common gui_config_info, guiconf
 loaddatapath=getpar(guiconf,'loaddatapath')
 if size(loaddatapath,/type) ne 7 then self.loaddatapath='.' else begin
@@ -538,7 +597,7 @@ endelse
 self.dispnewpipe=ptr_new(/allocate_heap)
 ; get display setup popup status memory
 self.dispconfstat=ptr_new(/allocate_heap)
-; set saveflag to 1 so that the gui doesnt ask for saving when it doesnt have any data
+; set saveflag = 1 (to avoid dialog if no data is present)
 self.saveflag=1
 return, 1
 end
@@ -567,11 +626,12 @@ struct={drip_pipeman, $
         n:0, $                ; the number of entries in filelist
         ind:0, $              ; the index of next file to reduce in filelist
         filelist:ptr_new(), $ ; file list for current pipe
-                              ; (all files: reduced and non-reduced)
+                              ; (all files: reduced, stepedback, non-reduced)
         ; reduced pipeline data
         cnt:0, $              ; number of summed files for current pipe
                               ; (can be !=ind b/c of stepback)
         name:'', $            ; name of current pipe dap
+                              ; !! This is how dap is found in dataman !!
         next:0, $             ; number of next pipe
         ; pipeline displays interaction
         dispnewpipe:ptr_new(),$; string array with name of new pipestep

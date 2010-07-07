@@ -244,12 +244,15 @@ xplot=obj
 
 dataman=obj_new('drip_dataman', mw)
 extman=obj_new('drip_extman',mw,dataman)
-dispman=obj_new('drip_dispman', disp_objs, mw, dataman,0,ibase)
+;dispman=obj_new('drip_dispman', disp_objs, mw, dataman,0,ibase)
+dispman=obj_new('drip_dispman', disp_objs, dataman, 0, ibase)  ;midbase
 dropman=obj_new('drip_dropman', dataman, mw)
 pipeman=obj_new('drip_pipeman', dataman, mw)
 automan=obj_new('drip_automan', mw,pipeman)
-menu=obj_new('drip_menu', dataman, mw,$
-             [dataman, pipeman, dispman, automan, extman])
+;menu=obj_new('drip_menu', dataman, mw,$
+;             [dataman, pipeman, dispman, automan, extman])
+menu=obj_new('drip_menu', dataman, pipeman, mw, $
+           [dataman, pipeman, dispman, automan, extman])
 ; analysis object managers
 analman_label=obj_new('drip_analman',ibase)
 analman_select=obj_new('drip_analman_select',ibase)

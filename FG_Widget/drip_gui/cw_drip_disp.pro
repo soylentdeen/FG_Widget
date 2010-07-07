@@ -1,8 +1,8 @@
 ; NAME:
-;     CW_DRIP_DISP - Version .7.0
+;     CW_DRIP_DISP - Version 1.7.0
 ;
 ; PURPOSE:
-;     Display window compound widget
+;     Display window compound widget. Works closely with analysis objects.
 ;
 ; CALLING SEQUENCE:
 ;     WidgetID = CW_DRIP_DISP( TOP, INDEX=IN, XSIZE=XS, YSIZE=YS)
@@ -13,40 +13,30 @@
 ;     XSIZE - X dimension of the display windows
 ;     YSIZE - Y dimension of the display windows
 ;
-; STRUCTURE:
-;     {DRIP_QL, IMAGE, PROCESS, DISPMAN, LABEL, DROP_SUM, SUM, DRAW, WID, DROP_FRAME,
-;      FRAME, BUTTON, XSIZE, YSIZE, INDEX}
-;     NPIPES - Number of pipes processed
-;     DISPIMAGE - Image in display
-;     DISPMAN - Display manager
-;     LABEL - Label in window
-;     DROP_STEP - Step droplist id
-;     STEP_SEL - Step droplist selection
-;     DROP_SUM - Sum droplist id
-;     SUM_SEL - Sum droplist selection ( 0:recent 1:average 2:sum)
-;     DRAW - Draw widget id
-;     WID - Window id
-;     DROP_FRAME - Frame droplist id
-;     FRAME_SEL - Frame droplist selection
-;     BUTTON - Button widget id
-;     XSIZE - X-size
-;     YSIZE - Y-size
-;     QUAD_ID - Quadrant Identification (input as A-D, stored as 0-3)
-;
 ; OUTPUTS:
 ;     WidgetID - the widget ID of the top level base of the compound widget.
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     ATV
+;     DRIP_DISPMAN: DISP passes mouse movement and focus updates to DISPMAN
+;     DRIP_ANAL_OBJECTS: DISP sets focus and updates ANALOBJS. DISP
+;                        manages the TOP ANALOBJ and passes mouse
+;                        button events to ANALOBJs.
+;     DRIP_ANAL_SCALE_OBJ: ANALSCALE sends color scale values to DISP
+;                          and calls DISP::IMAGESCALE
+;     DRIP_ANAL_SELECT_OBJ: ANALSELECT sends new data to DISP
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     The DISP objects are managed by DISPMAN. DISPMAN handles focus
+;     status and mouse movement updates for the DISPs. DISP manages a
+;     list of it's associated ANALOBJs and knows which of these is
+;     currently TOP. DISP sends mouse button events to the ANALOBJs
+;     and receives UPDATE and DRAW commands from them. An ANAL_SELECT
+;     object sends new data to the DISP (using IMAGESET). An
+;     ANAL_SCALE object sets the color scale and triggers color
+;     scaling (DISP::IMAGESCALE).
 ;
 ; RESTRICTIONS:
 ;     None
-;
-; PROCEDURE:
-;     Create DRIP_QL object.  lay out widgets.  set in motion.
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Alfred Lee, Cornell University, 2002
@@ -111,7 +101,7 @@ end
 
 ;******************************************************************************
 ;     IMAGESET - Get 2D image data
-;                -> dataraw is filled
+;                -> dataraw is filled, updates analysis objects
 ;******************************************************************************
 
 pro drip_disp::imageset, image, text
@@ -133,7 +123,6 @@ end
 
 ;******************************************************************************
 ;     IMAGESCALE - Scale image to right size and scale image colors
-;                    updates analobjects
 ;                    -> dispimg is filled
 ;******************************************************************************
 
@@ -155,13 +144,12 @@ endif else begin
       congrid((*self.dataraw), self.ysize*s[1]/s[2], self.ysize)
     self.zoom=float(self.ysize)/float(s[2])
 endelse
-; scale dispimage values (not necessary anymore, was med-stdev..med+stdev)
-; scale image
+; scale image colors
 *self.dispimg=!d.table_size*((dataimg)-self.colormin)/ $
               (self.colormax-self.colormin)
 *self.dispimg=(*self.dispimg > 0.0)
 *self.dispimg=(*self.dispimg < 255.0)
-; scale dataimg (all image data with color scaled)
+; scale dataimg colors (all image data with color scaled)
 *self.dispraw=!d.table_size*((*self.dataraw)-self.colormin)/ $
               (self.colormax-self.colormin)
 *self.dispraw=(*self.dispraw > 0.0)
@@ -179,20 +167,23 @@ device,decomposed=1
 ; draw border in appropriate color
 display=fltarr(self.xsize+4,self.ysize+4)
 display[*,*]=self.focus*255.0
-; get data
+; insert data
 if (size(*self.dispimg))[0] gt 0 then begin
     display[2:self.xsize+1,2:self.ysize+1]=(*self.dispimg)
 endif
 ; display data
 wset, self.wid
 tv,display
-; draw analysis objects
+; draw analysis objects (depends on focus)
 if self.focus gt 0 then begin
+    ; draw lower analobjs
     for i=0, self.analn-1 do begin
         if ((*self.anals)[i]->istop()) eq 0 then (*self.anals)[i]->draw
     endfor
+    ; draw top analobj
     if self.analn gt 0 then self.topanal->draw
 endif else begin
+    ; draw shown analobjs only
     for i=0, self.analn-1 do begin
         if ((*self.anals)[i]->isshow()) gt 0 then (*self.anals)[i]->draw
     endfor
@@ -259,7 +250,8 @@ case event.type of
     end
     ;** mouse motion
     2: begin
-         self.dispman->follow, self, event
+        ; update mouse information in dispman
+        self.dispman->follow, self, event
         ; check if objectmotion in progress
         if self.mousedown and self.focus then begin
             ; move object
@@ -282,17 +274,10 @@ case event.type of
     4: begin
         self->draw
     end
-    ;** character event
-    5: begin
-        ;print,'*** CHAR Event: press=',event.press,' ch=',event.ch, $
-        ;      ' release=',event.release,' mod=',event.modifiers
-    end
     ;** key event (non ASCII character)
     6: begin
-        ;print,'*** KEY Event: press=',event.press,' key=',event.key, $
-        ;      ' release=',event.release,' mod=',event.modifiers
         ; pass event along to anal_objects
-        ; (most won't know what todo with it)
+        ; (most analysis objects will not know what todo with it)
         if event.press gt 0 then $
           for i=0,self.analn-1 do (*self.anals)[i]->input,event
     end
@@ -302,7 +287,7 @@ device,decomposed=0
 end
 
 ;**********************************************************************
-;     OPENANAL - new analysis object
+;     OPENANAL - set up new analysis object
 ;**********************************************************************
 
 pro drip_disp::openanal, anal
@@ -509,8 +494,8 @@ struct={drip_disp, $
     anals:ptr_new(), $          ;analysis objects
     topanal:obj_new(), $        ;top analysis object (updated each draw)
     ; widgets and selections
-    label:0L, $                 ;label in window
-    text:0L, $                  ;label for text
+    label:0L, $                 ;widget id of label in window
+    text:0L, $                  ;widget id of label for text
     draw:0L, $                  ;draw widget id
     wid:0B, $                   ;window id - for graphics
     ; mouse action
@@ -533,18 +518,19 @@ end
 ;     CW Definition: EVENTHANDLER / CLEANUP / CREATING FUNCTION
 ;******************************************************************************
 
+;*** Cleanup
 pro drip_disp_cleanup, id
 widget_control, id, get_uvalue=obj
 obj_destroy, obj
 end
 
-
+;*** Event Handler
 pro drip_disp_eventhand, event
 Widget_Control, event.id, Get_UValue=cmd
 Call_Method, cmd.method, cmd.object, event
 end
 
-
+;*** Creating Function
 function cw_drip_disp, top, quad_id=id, xsize=xs, ysize=ys, _extra=ex
 
 obj=obj_new('drip_disp') ;create associated object
@@ -552,25 +538,21 @@ obj=obj_new('drip_disp') ;create associated object
 ; get font string from common block
 COMMON gui_os_dependent_values, largefont
 
-;lay out widgets
+; create widgets
 tlb=widget_base(top, /frame, /column)
-;top: label draw
 base1=widget_base(tlb, row=1, /align_center, kill_notify='drip_disp_cleanup')
 label=widget_label(base1, Value = id, font=largefont, /align_top)
-;**** took out /keyboard_events,
 draw=widget_draw(base1, xsize=xs+4, ysize=ys+4, _extra=e, $
                  /button_events, /motion_events, /expose_events, retain=0, $
                  keyboard_events=1, $
                  event_pro='drip_disp_eventhand', $
                  uvalue={object:obj, method:'input'})
-;center: text
 base2=widget_base(tlb, /row, /base_align_top, /align_center)
 text=widget_label(base2, value='.           NONE(pipestep[frame])           .' )
-     ;, font=largefont)
-;populate object 'self' structure
+; populate object 'self' structure
 obj->setdata, label=label, text=text, draw=draw, $
-      xsize=xs, ysize=ys, disp_id=id
-widget_control, base1, set_uvalue=obj ;store object reference in 1st child widget
+              xsize=xs, ysize=ys, disp_id=id
+widget_control, base1, set_uvalue=obj ; store object ref in 1st child widget
 
 return, tlb
 end

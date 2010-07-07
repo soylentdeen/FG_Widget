@@ -1,5 +1,5 @@
 ; NAME:
-;   EDIT_PARAM_LIST - Version .1
+;   EDIT_PARAM_LIST - Version 1.1
 ;
 ; PURPOSE:
 ;   Edit a list of parameters and their values
@@ -20,55 +20,70 @@
 ;   This command opens a blocking window:
 ;
 ; RESTRICTIONS:
+;   Do not add or delete lines if you are using the filtering
+;   function. If done is pressed when the text is filtered, only the
+;   matching lines are returned.
 ;
 ; PROCEDURE:
 ;   Makes a text with the format parameter=value. The text is
 ;   displayed in a editable text window with some lines of
 ;   instructions. Then the text is translated back into a parameter
-;   list and returned.
+;   list and returned. The entries can also be filtered such that only
+;   lines matching a certain pattern are shown.
 ;
 ; MODIFICATION HISTORY
-;   Modified By: Nirbhik Chitrakar 04/2009
-;                 added filter utility
 ;   Written By: Marc Berthoud Palomar 2005-6-25
 ;               path not implemented yet
+;   Modified By: Nirbhik Chitrakar 04/2009
+;                added filter utility
 ;
 
+;***********************************************************
+;     EDIT_PARAM_LIST_EVENT - event function
+;***********************************************************
 pro edit_param_list_event, event
-  widget_control, event.id, get_uvalue=uval
-  widget_control, event.top, get_uvalue=statval
-  switch event.id of
-     (*statval).filter_text:
-     (*statval).filterwid:begin
+widget_control, event.id, get_uvalue=uval
+widget_control, event.top, get_uvalue=statval
+switch event.id of
+    ; Filter Text
+    (*statval).filter_text:
+    (*statval).filterwid:begin
         list=(*statval).list
-        ;update changes to the original list
+        ; update changes to the original list if the text
         widget_control,(*statval).textwid, get_value = text
         list[*(*statval).flt_idx]= text
+        ; get filter search string
         widget_control,(*statval).filter_text, get_value=filter
         if (strlen(filter) eq 0) then filter='*'
-        ;Find header lines containing the filter (e.g. filter+'*')
+        ; Find header lines containing the filter (e.g. filter+'*')
         flt_idx=where(strmatch(list,filter+'*',/fold_case) eq 1,count)
+        ; Send matching lines to text (or all lines if no match found)
         if (count gt 0) then begin
-           widget_control,(*statval).textwid, set_value=list[flt_idx]
-           *(*statval).flt_idx=flt_idx
+            widget_control,(*statval).textwid, set_value=list[flt_idx]
+            *(*statval).flt_idx=flt_idx
         endif else widget_control,(*statval).textwid, set_value='No match found'
         break
-     end
-     (*statval).donewid: begin
+    end
+    ; Done -> Save and exit
+    (*statval).donewid: begin
         (*statval).retval=1
         widget_control, (*statval).textwid, get_value=text
         *(*statval).text=text
         widget_control, event.top, /destroy
         break
-     end
-     (*statval).chancelwid: begin
+    end
+    ; Chancel -> Exit
+    (*statval).chancelwid: begin
         (*statval).retval=0
         widget_control, event.top, /destroy
         break
-     end
-  endswitch
+    end
+endswitch
 end
 
+;******************************************************************************
+;     EDIT_PARAM_LIST - Main functions
+;******************************************************************************
 pro edit_param_list, list, path=path, viewonly=viewonly, comment=comment
 
 ; check and set
@@ -103,8 +118,6 @@ flt_idx=ptr_new(intarr(n_elements(list)))
 
 ;make buttons
 button_list=widget_base(top, /row)
-;loadwid=widget_button(button_list, value='Load', uvalue=2, $
-;                          event_pro='edit_param_list_event')
 if not keyword_set(viewonly) then $
   chancelwid=widget_button(button_list, value='Chancel', uvalue=0, $
                            event_pro='edit_param_list_event') $

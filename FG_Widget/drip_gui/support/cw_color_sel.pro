@@ -1,5 +1,5 @@
 ; NAME:
-;     CW_COLOR_SEL - Version .1
+;     CW_COLOR_SEL - Version 1.1
 ;
 ; PURPOSE:
 ;     Color Select compound widget
@@ -19,7 +19,7 @@
 ;
 ; EVENTS:
 ;     Creates an event that has as color the new color value
-;     if a color is selected
+;     if a color is selected.
 ;
 ; OUTPUTS:
 ;     WidgetID - widget ID of the top level widget
@@ -73,8 +73,6 @@ function cw_color_sel_getcol, id
 child=widget_info(id, /child)
 widget_control, child, get_uvalue=state, /no_copy
 color=state.color
-; set state
-widget_control, child, set_uvalue=state, /no_copy
 ; return
 return, color
 end
@@ -85,21 +83,21 @@ end
 
 function cw_color_sel_event, event
 
-; get state, color
+; get state
 top=widget_info(event.handler, /parent)
 child=widget_info(top, /child)
 widget_control, child, get_uvalue=state, /no_copy
-; check if event from draw
+; check if event is from draw widget
 if event.id eq state.draw then begin
-    ; check if mousedown or mouseup
     widget_control, state.draw, get_value=wid
     wset, wid
     dx=state.xsize
     dy=state.ysize
     ddy=1+dy/8
+    ; check event (press mouse or release mouse)
     case event.type of
-        0: begin ; button press
-            ; set colors
+        0: begin ; mouse button press
+            ; set colors like:
             ; 000 0g0 r00 rg0
             ; 00b 0gb r0b rgb
             arr=bytarr(dx,dy)
@@ -114,7 +112,7 @@ if event.id eq state.draw then begin
             tv,arr,0,0,3
             ret=0 ; to return no further event
         end
-        1: begin ; button release
+        1: begin ; mouse button release
             ; check if mouse release inside field
             x=event.x
             y=event.y
@@ -125,7 +123,7 @@ if event.id eq state.draw then begin
                 if (x lt dx/4) or ((x lt 3*dx/4) and (x ge dx/2)) then $
                     color[1]=0 else color[1]=255
                 if y lt dy/2 then color[2]=255 else color[2]=0
-                ; set color
+                ; set new color
                 state.color=color
                 arr=bytarr(dx,dy-2*ddy)
                 arr[*,*]=color[0]
@@ -134,11 +132,11 @@ if event.id eq state.draw then begin
                 tv,arr,0,ddy,2
                 arr[*,*]=color[2]
                 tv,arr,0,ddy,3
-                ; make retrun event
+                ; make return event
                 ret = { cw_color_sel_event, id: state.top, top:event.top, $
                         handler:0L, color:color}
             endif else begin
-                ; set back to old color
+                ; set old color
                 arr=bytarr(dx,dy-2*ddy)
                 arr[*,*]=state.color[0]
                 tv,arr,0,ddy,1
@@ -165,7 +163,7 @@ function cw_color_sel, parent, color, uvalue=uvalue, label=label, $
                        event_pro=event_pro, event_func=event_func, $
                        xsize=xsize, ysize=ysize
 
-; get params
+; get parameters
 if not keyword_set(xsize) then xsize=40
 if not keyword_set(ysize) then ysize=24
 ; open widgets
@@ -175,10 +173,10 @@ top=widget_base(parent, /row, $
 if keyword_set(label) then labelwid=widget_label(top, value=label)
 draw=widget_draw(top, xsize=xsize, ysize=ysize, /button_events, $
                  event_func='cw_color_sel_event')
-; make record and set
+; make the structure and set
 state={top:top, draw:draw, color:color, xsize:xsize, ysize:ysize}
 widget_control, widget_info(top, /child) , set_uvalue=state, /no_copy
-; set functions
+; set functions and values
 if keyword_set(uvalue) then $
     widget_control, top, set_uvalue=uvalue
 if keyword_set(event_pro) then $

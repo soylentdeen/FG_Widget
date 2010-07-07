@@ -1,33 +1,27 @@
 ; NAME:
-;     DRIP_ANALMAN_STATS__DEFINE - Version .7.0
+;     DRIP_ANALMAN_STATS__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Analysis Object Manager for the GUI
+;     Analysis Object Manager for ANAL_STATS objects.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANALMAN_STATS', BASEID)
-;
-; INPUTS:
-;     BASEID - Widget ID of base to put widgets
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
+;     DRIP_ANALMAN_STATS inherits DRIP_ANALMAN
+;     CW_DRIP_DISP: ANALMAN_STATS registers new ANALOBJs with the DISP
+;     DRIP_ANAL_STATS: ANALMAN_STATS creates, destroys and assigns
+;                       widgets to ANAL_STATS objects. ANALMAN_STATS
+;                       also creates and destroys these objects.
+;     DRIP_DISPMAN: DISPMAN calls ANALMAN_STATS::SETALLWID whenever a
+;                   different DISP is in focus. SETALLWID then assigns
+;                   existing and new widgets to the ANAL_STATS objects.
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Upon ANALMAN_STATS::START this manager sets up the basic widgets
+;     for ANAL_STATS object management.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by display manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, November 2007
@@ -106,7 +100,6 @@ if self.analn gt 0 then begin
     if focid ge idi then analnext++
 endif
 ; add to list (in order)
-;print,'openanal:',analobjn,analnext
 if analnext gt 0 then anals=[(*self.anals)[0:analnext-1],analnew] $
   else anals=[analnew]
 if analnext ge self.analn then *self.anals=anals $
@@ -145,7 +138,6 @@ for anali=0,self.analn-1 do begin
     if (*self.anals)[anali]->isfocus() or $
        (*self.anals)[anali]->isshow() then begin
         ; create widgets if necessary
-        ;print,'  widi=',widi
         if widi ge widn then begin
             ; make new structure
             newwids={drip_anal_stats_wids}
@@ -160,27 +152,17 @@ for anali=0,self.analn-1 do begin
                                        xsize=32, ysize=19)
             data=lonarr(6)
             row=widget_base((colwids.data)[0], column=6)
-            ;row=(colwids.data)[0]
             for i=0,5 do begin
                label=widget_label(row,xsize=65, font=smallfont,/align_center)
                data[i]=label
             endfor
             newwids.data=[row,data]
-            ;widget_control,colwids.data,get_value=tblval
-            ;help,tblval
-            ;print,tblval
-            ;print,'table val here'
-            ;widget_control,colwids.data,insert_rows=1,scr_ysize=70
-            ;newwids.data=colwids.data
-            
             ; append them to wids
             *self.wids=[*self.wids,newwids]
-            ;print,'  Creating new widget label=',newwids.label
         endif
         ; check if still same display
         disp=(*self.anals)[anali]->getdata(/disp)
         newid=disp->getdata(/disp_id)
-        ;print,'  newid=',newid
         if dispid ne newid then begin
             dispid=newid
             objcnt=1
@@ -276,18 +258,12 @@ colorlabel=widget_label(color, value='Color')
 dataheaders = ['Mean', 'Median','StdDev','Min','Max','Pixels']
 dtbl=widget_base(table,/column)
 row=widget_base(dtbl,column=6)
-;row=data[0]
 for i=0,5 do begin
    datalabel=widget_label(row, font=smallfont,/frame, $
                           value=dataheaders[i],xsize=65)
 endfor
 data=lonarr(7)
 data[*]=widget_base(dtbl, column=1)
-;data table
-;data=widget_base(table,/column)
-;dataheaders = [['Mean', 'Median','StdDev','Min','Max','Pixels']]
-;datatable=widget_table(data, xsize=6, ysize=1,$
-;                       /no_row_headers, column_labels=dataheaders)
 
 ;** create structure and fill in
 widlist={drip_anal_stats_wids, label:label, show:show, top:top, $

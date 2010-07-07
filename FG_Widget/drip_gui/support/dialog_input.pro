@@ -1,5 +1,5 @@
 ; NAME:
-;   DIALOG_INPUT - Version .1
+;   DIALOG_INPUT - Version 1.1
 ;
 ; PURPOSE:
 ;   Get an input value from the user
@@ -26,6 +26,9 @@
 ;   Written By: Marc Berthoud Palomar 2006-7-2
 ;
 
+;***********************************************************
+;     DIALOG_INPUT_EVENT - Event Function
+;***********************************************************
 pro dialog_input_event, event
 widget_control, event.id, get_uvalue=uval
 widget_control, event.top, get_uvalue=statval
@@ -45,8 +48,10 @@ switch event.id of
 endswitch
 end
 
+;***********************************************************
+;     DIALOG_INPUT - Function to create the dialog
+;***********************************************************
 function dialog_input, prompt
-
 ; check and set
 statval=ptr_new(/allocate_heap) ; to return values once
 ; make widgets
@@ -62,6 +67,7 @@ button_chancel=widget_button(buttons, value='Chancel', $
 ; realize and start widgets
 widget_control, top, /realize
 xmanager, 'Input:', top
-; if done and interactive: translate text -> paramlist
+
+; return appropriate text
 if (*statval).retval gt 0 then return,(*statval).input else return,''
 end

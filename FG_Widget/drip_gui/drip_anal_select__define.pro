@@ -1,35 +1,45 @@
 ; NAME:
-;     DRIP_ANAL_SELECT__DEFINE - Version .7.0
+;     DRIP_ANAL_SELECT__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Pipe Step Selection Analysis Objects for the GUI
+;     Pipe Step Selection Analysis Objects for the GUI. This analysis
+;     object allows the user to send any data from the dataman to the
+;     displays.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANAL_SELECT', MW)
-;
-; INPUTS:
-;     MW - Message manager object reference
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;     MW - message window object reference
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     CW_DRIP_MW
+;     DRIP_ANAL_SELECT inherits DRIP_ANAL
+;     DRIP_ANALMAN_SELECT: This object creates ANAL_SELECT and
+;                          assigns it screen widgets
+;     CW_DRIP_DISP: DISPlays inform ANAL_SELECT of changes in focus,
+;                   request updates redraws. ANAL_SELECT sends new
+;                   data to display to the DISP (DISP::IMAGESET).
+;     DRIP_DATAMAN: ANAL_SELECT requests lists of daps and elements
+;                   and get data from DATAMAN. DATAMAN notifies
+;                   ANAL_SELECT if data has changed or new data is
+;                   available (ANAL_SELECT::NEWDAP)
+;     DRIP_PIPEMAN: PIPEMAN sets which data ANAL_SELECT should send to
+;                   the display (according to pipe->display configuration)
+;     ATV: Is used by ANAL_SELECT as an external viewer.
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     On top of normal analysis object functions (focus, title)
+;     ANAL_SELECT acts as a data conduit between the displays and the
+;     rest of the GUI. Data is always moved from the DATAMAN to the
+;     displays. There are three ways in which the data can be updated
+;     / changed:
+;       1) The user selects a different DAP or element from the
+;          ANAL_SELECT widgets
+;       2) DATAMAN notifies ANAL_SELECT that new data is available
+;          (DATAMAN::CHANNELCALL calls ANAL_SELECT::NEWDAP)
+;       3) PIPEMAN sets which DAP and ELEMENT to display by calling
+;          ANAL_SELECT::NEWDAP
+;     ANAL_SELECT automatically selects which ELEMENTS of the current
+;     DAP are appropriate for showing in the DISP.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by image manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, May 2004
@@ -117,7 +127,7 @@ endif else begin
    imgtext='none'
 endelse
 *self.dataraw=image
-;** if multiframe select right frame
+;** if multiframe select required frame
 imgsize=size(image)
 if imgsize[0] gt 2 then begin
    ; set self.frame if necessary
@@ -133,7 +143,7 @@ endif else begin
    self.frame_sel=0
    self.framen=0
 endelse
-;** pass image (2d) to disp
+;** pass image (2d) to display
 self.disp->imageset,image,imgtext
 end
 
@@ -302,13 +312,15 @@ case event.id of
        ; Set focus to display (fixes loss of focus by droplist widgets)
        widget_control, self.disp->getdata(/draw), /INPUT_FOCUS
    end
+   ; ATV button -> launch exernal viewer
    self.button_tv:begin
-       atv,(*self.dataraw)
-       if (size(*self.dataraw))[0] EQ 3 then begin
-         drip_message,'ATV: Displaying 0th frame of 3-D array'
-       endif
+       atv22,(*self.dataraw)
+       ;if (size(*self.dataraw))[0] EQ 3 then begin
+       ;  drip_message,'ATV: Displaying 0th frame of 3-D array'
+       ;endif
        ;smtv,(*self.dataraw);,lead=event.top, size=2*256
    end
+   ; Button events from the display -> go to different frame / element
    self.disp_draw:begin
        if event.type eq 6 then begin
            case event.key of
@@ -363,25 +375,26 @@ end
 
 pro drip_anal_select::setfocus, focus
 if focus ne self.focus then begin
-   self.focus=focus
-   if focus eq 1 then begin
-       ;** set up widgets (callback functions, values and uvalues)
-       ; label
-       widget_control, self.labelwid, set_value=self.title
-       ; set pipe step droplist
-       widget_control, self.drop_elem, $
-         set_uvalue={object:self, method:'input'}
-       ; set sum select droplist
-       widget_control, self.drop_dap, $
-         set_uvalue={object:self, method:'input'}
-       ; set frame select droplist
-       widget_control, self.drop_frame, $
-         set_uvalue={object:self, method:'input'}
-       widget_control, self.button_tv, $
-         set_uvalue={object:self, method:'input'}
-       self.dataman->callinfo,dapsel=(*self.daplist)[self.dap_sel]
-   endif
-   self->update
+    self.focus=focus
+    if focus eq 1 then begin
+        ;** set up widgets (callback functions, values and uvalues)
+        ; label
+        widget_control, self.labelwid, set_value=self.title
+        ; set pipe step droplist
+        widget_control, self.drop_elem, $
+          set_uvalue={object:self, method:'input'}
+        ; set sum select droplist
+        widget_control, self.drop_dap, $
+          set_uvalue={object:self, method:'input'}
+        ; set frame select droplist
+        widget_control, self.drop_frame, $
+          set_uvalue={object:self, method:'input'}
+        widget_control, self.button_tv, $
+          set_uvalue={object:self, method:'input'}
+        self.dataman->callinfo,dapsel=(*self.daplist)[self.dap_sel]
+    endif
+    ; update (will set the selections the the correct texts)
+    self->update
 endif
 end
 
@@ -445,18 +458,18 @@ end
 pro drip_anal_select__define
 
 struct={drip_anal_select, $
-       dataman:obj_new(), $ ;dataman object
+       dataman:obj_new(), $ ; dataman object
        ; widgets
-       drop_dap:0L, $       ;dap droplist id
-       drop_elem:0L, $      ;step droplist id
-       drop_frame:0L, $     ;frame droplist id
-       button_tv:0L, $      ;button to call ATV
-       disp_draw:0L, $      ;id of display draw widget (for input events)
+       drop_dap:0L, $       ; dap droplist id
+       drop_elem:0L, $      ; step droplist id
+       drop_frame:0L, $     ; frame droplist id
+       button_tv:0L, $      ; button to call ATV
+       disp_draw:0L, $      ; id of display draw widget (for input events)
        ; selections
-       dap_sel:0, $         ;dap droplist selection
-       elem_sel:0, $        ;step droplist selection
-       elem_pref:'', $      ;preferred element selection
-       frame_sel:0, $       ;frame droplist selection (starting with 0)
+       dap_sel:0, $         ; dap droplist selection
+       elem_sel:0, $        ; step droplist selection
+       elem_pref:'', $      ; preferred element selection
+       frame_sel:0, $       ; frame droplist selection (starting with 0)
        ; data variables
        dapn:0, $            ; number of daps
        daplist:ptr_new(), $ ; list of current dap names

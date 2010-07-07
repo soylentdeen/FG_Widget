@@ -1,11 +1,11 @@
 ; NAME:
-;     GUI - Version .7.0
+;     GUI - Version 1.7.0
 ;
 ; PURPOSE:
-;     GUI for running the DRiP.
+;     Starts the GUI for running the FORCAST DRiP.
 ;
 ; CALLING SEQUENCE:
-;     GUI, [XSIZE=XS, YSIZE=YS]
+;     GUI, [XSIZE=XS, YSIZE=YS, DATAMAN=DATAMAN_RETURN]
 ;
 ; INPUTS:
 ;     XSIZE - X dimension of the display windows
@@ -16,24 +16,31 @@
 ;                 full data structure(s).  IDL save file with full data
 ;                 structure(s)
 ;     FITS output: averaged sum of final reduced images.
+;     DATAMAN - Returns the dataman variable to access reduced data
+;               from the IDL command line.
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     DRIP__DEFINE
-;     CW_DRIP_DISP
-;     DRIP_DISPMAN
-;     DRIP_DATAMAN
-;     DRIP_MENU
-;     DRIP_AUTOMAN
-;     CW_DRIP_MW
-;
-; SIDE EFFECTS:
-;     None identified
-;
-; RESTRICTIONS:
-;     memory may run out quickly
+;     DRIP_CONFIG_LOAD: To load the drip configuration
+;     CW_DRIP_DISP: To create display compound widgets
+;     CW_DRIP_MW: To create a message window compound widget
+;     DRIP_DATAMAN: The datamanager for all stored data
+;     DRIP_MENU: The Menu Manager that creates general menu items
+;     DRIP_PIPEMAN: The pipeline manager that reduced data and sends
+;                   reduced data to the data manager
+;     DRIP_AUTOMAN: The auto manager, a tool to automatically reduce data
+;     DRIP_DISPMAN: The display manager to manage the displays and
+;                   analysis objects
+;     DRIP_ANALMAN: The manger for all label analysis objects
+;     DRIP_ANALMAN_SELECT: The manager for selection analysis objects
+;     DRIP_ANALMAN_STATS: The manager for statistics analysis objects
+;     DRIP_ANALMAN_POINT: The manager for point analysis objects
 ;
 ; PROCEDURE:
-;     lay out the widgets, create manager objects, set the gui in motion.
+;     load configuration files, lay out the widgets, create manager
+;     objects, start manager objects, set the gui in motion.
+;
+; RESTRICTIONS:
+;     Some objects may have memory leaks.
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Alfred Lee, Cornell University, 2002
@@ -76,7 +83,6 @@
 ;******************************************************************************
 pro drip_eventhand, event
 Widget_Control, event.id, Get_UValue=cmd
-;print,'EVENT: method=',cmd.method
 Call_Method, cmd.method, cmd.object, event
 end
 
@@ -85,10 +91,11 @@ end
 ;     DRIP_CLEANUP - To clean up when done
 ;******************************************************************************
 pro drip_cleanup, top
-; get menu, dataman, dropman, dispman, automan, pipeman objects
+; get menu, dataman, dropman, dispman, automan and pipeman objects
 widget_control, top, get_uvalue=obj
 ; destroy these objects
-; (display and mw objects are destroyed by dispman::cleanup)
+; (display objects are destroyed by dispman::cleanup)
+; (mw object is destroyed by pipeman::cleanup)
 obj_destroy, obj
 ; save drip configuration variables
 common drip_config_info, dripconf, drip_errproc
@@ -184,7 +191,7 @@ if strlen(conffilename) gt 0 then begin
     free_lun,fileunit
 endif
 
-;** widgets and objects
+;** create widgets and objects
 ; base widget
 top=widget_base(column=2, title='FORCAST Quick Look Data Reduction', $
 ;      mbar=mbar, /scroll, x_scroll_size=1024, y_scroll_size=768) ; scroling
@@ -193,7 +200,7 @@ mbar=mbar,event_pro='top_event') ; non scroling
 cbase=widget_base(top, column=1, /base_align_left, /frame, space=5, $
                   xsize=2*xs+29) ;, ysize=185)
 ctrlbase=widget_base(cbase, /row )
-;Pipeline Control Base
+; Pipeline Control Base
 ctrlbase1=widget_base(ctrlbase, /column )
 ; draw base
 dbase=widget_base(top, row=2, /base_align_left, space=5)
@@ -223,11 +230,11 @@ drip_errproc={object:mw, funct:'print'}
 ; create objects
 dataman=obj_new('drip_dataman', mw)
 midbase=widget_base(ibase, /row, /frame)
-dispman=obj_new('drip_dispman', disp_objs, mw, dataman, 1, midbase)
+dispman=obj_new('drip_dispman', disp_objs, dataman, 1, midbase)
 dropman=obj_new('drip_dropman', dataman, mw)
 pipeman=obj_new('drip_pipeman', dataman, mw)
 automan=obj_new('drip_automan', mw,pipeman)
-menu=obj_new('drip_menu', dataman, mw, $
+menu=obj_new('drip_menu', dataman, pipeman, mw, $
              [dataman, pipeman, dropman, dispman, automan] )
 ; analysis object managers
 midhalfbase=widget_base(midbase,/column)
@@ -241,12 +248,12 @@ analmans=[analman_label, analman_select, analman_scale, analman_stats, $
 ; return dataman if requested
 if keyword_set(dataman_return) then begin
     dataman_return=dataman
-    print,"To list dataman functions type dataman->printhelp"
+    print,"To list data manager functions type dataman->printhelp"
 endif
 
 ;** realize, start objects, register
 widget_control, top, set_uvalue=[menu,dataman,dropman,dispman,automan,pipeman], /realize
-; start all objects
+; start all objects (the order is important)
 dataman->start, ctrlbase
 dispman->start, analmans
 analman_label->start, disp_objs
@@ -256,11 +263,11 @@ analman_scale->start, disp_objs
 analman_stats->start, dispman
 analman_point->start, dispman
 dropman->start
-menu->start, mbar, disp_sels=analsels ; move 2 lines up 2010-3-23 mgb
+menu->start, mbar, disp_sels=analsels
 pipeman->start, mbar, ctrlbase1, disp_sels=analsels
 automan->start, mbar, ctrlbase1
 
-;preserve color
+; preserve color table
 COMMON color_table, set_color
 set_color=[0,0,0]
 tvlct,set_color(0), set_color(1), set_color(2), /get

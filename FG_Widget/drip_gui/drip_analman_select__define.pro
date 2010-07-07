@@ -1,30 +1,23 @@
 ; NAME:
-;     DRIP_ANALMAN_SELECT__DEFINE - Version .7.0
+;     DRIP_ANALMAN_SELECT__DEFINE - Version 1.7.0
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANALMAN_SELECT', BASEID)
+; PURPOSE:
+;     Analysis Object Manager for ANAL_SELECT objects.
 ;
-; INPUTS:
-;     BASEID - Widget ID of base to put widgets
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
+;     DRIP_ANALMAN_SELECT inherits DRIP_ANALMAN
+;     CW_DRIP_DISP: ANALMAN_SELECT registers new ANALOBJs with the DISP
+;     DRIP_ANAL_SELECT: ANALMAN_SELECT creates, destroys and assigns
+;                       widgets to ANAL_SCALE_OBJs
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Upon ANALMAN_SELECT::START this manager creates one
+;     ANAL_SELECT_OBJ for each DISP.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by display manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, November 2007
@@ -35,8 +28,7 @@
 
 pro drip_analman_select::start, disps, dataman
 
-;**** create a general analysis object for each display
-;** make widgets
+; make widgets for object
 common gui_os_dependent_values, largefont, smallfont
 label=widget_label(self.topwid, value='Pipe Step:', font=largefont)
 button_tv=widget_button(self.topwid, value='ATV' )
@@ -46,14 +38,17 @@ drop_elem=widget_droplist(self.topwid, $
                           value=['  No DAP Element  '] )
 drop_frame=widget_droplist(self.topwid, value=['   0'] )
 
-;** initialize anal_objects
+; create a general analysis object for each display
 dispn=size(disps,/n_elements)
 self.analn=dispn
 *self.anals=objarr(dispn)
+; loop through all displays
 for i=0,dispn-1 do begin
+    ; create the object and set it up
     anal=obj_new('drip_anal_select', disps[i], self, $
                  dataman, 'Pipe Step:')
     anal->setwid, label, drop_dap, drop_elem, drop_frame, button_tv
+    ; register the analobj with the display and store it locally
     disps[i]->openanal, anal
     (*self.anals)[i]=anal
 endfor

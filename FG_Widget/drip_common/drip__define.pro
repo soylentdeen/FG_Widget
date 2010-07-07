@@ -195,7 +195,7 @@ structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
            data:*self.data, cleaned:*self.cleaned, badflags:*self.badflags, $
            linearized:*self.linearized, flatted:*self.flatted, stacked:*self.stacked, $ ;LIN
            undistorted:*self.undistorted, merged:*self.merged, $
-           coadded:*self.coadded,coadded_rot:fltarr(256,256), $    ; CHANGED from coadded_rot:rot(..., 90)
+           coadded:*self.coadded,coadded_rot:rot(*self.coadded,90), $  ;coadded_rot:rot(*self.coadded, 90)
            lastcoadd:*self.lastcoadd, badmap:*self.badmap, darks:*self.darks, $
            cleaneddarks:*self.cleaneddarks, darksum:*self.darksum, flats:*self.flats, $
            lincor:*self.lincor, $ ;LIN

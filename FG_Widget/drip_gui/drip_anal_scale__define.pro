@@ -1,35 +1,33 @@
 ; NAME:
-;     DRIP_ANAL_SCALE__DEFINE - Version .7.0
+;     DRIP_ANAL_SCALE__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Color Scaling Analysis Objects for the GUI
+;     Color Scaling Analysis Objects for the GUI. The analysis object
+;     allows the user to set the color scale of the display.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANAL_SCALE', MW)
-;
-; INPUTS:
-;     MW - Message manager object reference
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;     MW - message window object reference
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     CW_DRIP_MW
+;     DRIP_ANAL_SCALE inherits DRIP_ANAL
+;     DRIP_ANALMAN_SCALE: This object creates ANAL_SCALE and
+;                          assigns it screen widgets
+;     CW_DRIP_DISP: DISPlays inform ANAL_SCALE of changes in focus,
+;                   request updates redraws. ANAL_SCALE sends new
+;                   data to display to the DISP (DISP::IMAGESET). DISP
+;                   also notifies ANAL_SCALE of potential mouse actions,
+;                   moving the stats box is done by ANAL_SCALE::MOVE.
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Beyond the normal analysis object functions (focus, title)
+;     ANAL_SCALE allows the user to use an interactive frame to set
+;     the color scale of the image. The three possible scaling options
+;     are Min-Max (highest / lowest value in the frame or user set),
+;     N-Sigma (Set scale from median-N*stddev . . . median+N*stddev)
+;     and Percent (same as Min-Max but ignore (100-Percentage)/2
+;     pixels with highest and lowest values.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by image manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, January 2004
@@ -93,14 +91,13 @@ if imgsize[0] gt 0 then begin ; we have data
        'percen':begin
            n=n_elements(img)
            sortindex=sort(img)
-           noff=fix((100.-self.perval)*n/200, type=13); noff=fix((100.-self.perval)*n/200)
-           ;print,n,self.perval,noff 
-           self.scalemin=img[sortindex[n-1-noff]]
-           self.scalemax=img[sortindex[noff]]
+           noff=fix((100.-self.perval)*n/200, type=13)
+           self.scalemin=img[sortindex[noff]]
+           self.scalemax=img[sortindex[n-1-noff]]
        end
    endcase
    ; check ranges
-   if self.scalemax eq self.scalemin then self.scalemax=self.scalemin+1.0
+   if self.scalemax le self.scalemin then self.scalemax=self.scalemin+1.0
    ; make sure no value is zero (else it won't be forwarded by setdata)
    valrange=self.scalemax-self.scalemin
    ; update display range (need to make sure value passed is ne zero)
@@ -236,46 +233,6 @@ endcase
 end
 
 ;****************************************************************************
-;    GUIControl - controls which guis are displayed
-;****************************************************************************
-
-pro drip_anal_scale::guicontrol,event
-
-  ;action only if the button is selected
- if (event.select) then begin
-    case event.id of
-       self.minmaxbutton:begin
-          self->buildgui,'minmax'
-       end
-       self.nsigmabutton:begin
-          self->buildgui,'nsigma'
-       end
-       self.percenbutton:begin
-          self->buildgui,'percen'
-       end
-    endcase
- endif else begin
-    case event.id of
-       self.minmaxbutton:begin
-          widget_control,self.minmaxbase,/destroy
-          self.minmaxbase=-1
-       end
-       self.nsigmabutton:begin
-          widget_control,self.nsigbase,/destroy
-          self.nsigbase=-1
-       end
-       self.percenbutton:begin
-          widget_control,self.perbase,/destroy
-          self.perbase=-1
-       end
-    endcase
- endelse
-
-end
-
-
-
-;****************************************************************************
 ;     BUILDGUI - builds option base and fills in values
 ;****************************************************************************
 
@@ -330,7 +287,7 @@ pro drip_anal_scale::buildgui
        self.nsigtext=cw_field(self.optionbase,$
                               title='N-Sigma :',/floating,$
                               /return_events,$
-                              xsize=7,ysize=3)
+                              xsize=10,ysize=3)
        ; set N-sigma value
        widget_control, self.nsigtext, $
                        set_uvalue={object:self, method:'input'}, $
@@ -345,7 +302,7 @@ pro drip_anal_scale::buildgui
        self.pertext=cw_field(self.optionbase,$
                              title='Percentage :',/floating,$
                              /return_events,$
-                             xsize=7,ysize=3) 
+                             xsize=10,ysize=3) 
        ; set Percent value
        widget_control, self.pertext, $
                        set_uvalue={object:self, method:'input'}, $
@@ -600,6 +557,8 @@ self.color=[0,0,255]
 self.scaleoption='minmax'
 self.minauto=1
 self.maxauto=1
+self.nsigval=2.0
+self.perval=90.0
 return, 1
 end
 

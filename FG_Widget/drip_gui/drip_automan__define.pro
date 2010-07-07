@@ -1,38 +1,30 @@
 ; NAME:
-;     DRIP_AUTOMAN - Version .7.0
+;     DRIP_AUTOMAN - Version 1.7.0
 ;
 ; PURPOSE:
 ;     Auto reduction manager for DRiP GUI
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_AUTOMAN', MENU)
-;
-; INPUTS:
-;     MENU - Menu Event Manager object reference
-;
-; STRUCTURE:
-;     {DRIP_AUTOMAN, FILE, MENU, ON, PATH, FILELUN, CHECKID, AUTOMENU, TIMERWID}
-;     FILE - filename of data file
-;     MENU - menu manager
-;     ON - on/off
-;     PATH - working directory
-;     FILELUN - logical unit number of text file
-;     CHECKID - checkbox widget id
-;     AUTOMENU - auto menu item id
-;     TIMERWID - widget id of timer event handler widget
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     DRIP_MENU
+;     CW_DRIP_MW: Used to send messages to the user
+;     DRIP_PIPEMAN: AUTOMAN sends PIPEMAN files to open and commands
+;                   it to run the reduction
 ;
-; SIDE EFFECTS:
-;     None Known
+; PROCEDURE:
+;     AUTOMAN requires a text file that lists the file names of recently
+;     stored data files (the listfile). If auto reduction is on, that
+;     file is read every 5 seconds. New entries in the listfile are
+;     compared to a list stored by AUTOMAN. New files are sent to
+;     PIPEMAN and reduced (PIPEMAN::RUN). The filename entry in
+;     listfile is altered according to pathskip and pathadd to
+;     acomodate different paths on the FORAK and the data reduction
+;     computer. If the new datafile has different keywords than the
+;     previous one (as specified in resetvars) a new pipeline is set
+;     up and all following files are reduced using the new pipeline.
 ;
 ; RESTRICTIONS:
 ;     Scanning doesn't work well in windows....
-;
-; PROCEDURE:
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Alfred Lee, Cornell University, February, 2003
@@ -90,21 +82,20 @@ if self.on then begin
                 ;** if not
                 ; get file header
                 fits_read, datafile, null, newhead, /header
-                ; get resetarr resetn
+                ; get resetarr, resetn
                 resetarr=strsplit(self.resetvars,'/',/extract)
                 resetn=size(resetarr,/N_elements)
                 ; compare file header with basehead
                 ; (to determine if new pipe has to be run)
                 changehead=0
                 for reseti=0,resetn-1 do begin
-                    print,' comparing keyword ',resetarr[reseti], $
-                      ' newhead=',sxpar(newhead,resetarr[reseti]), $
-                      ' basehead=',sxpar(*self.basehead,resetarr[reseti])
+                    ; print,' comparing keyword ',resetarr[reseti], $
+                    ;   ' newhead=',sxpar(newhead,resetarr[reseti]), $
+                    ;   ' basehead=',sxpar(*self.basehead,resetarr[reseti])
                     if string(sxpar(newhead,resetarr[reseti])) ne $
                        string(sxpar(*self.basehead,resetarr[reseti])) then $
                       changehead=1
                 endfor
-                print,'changehead=',changehead
                 ; check if new pipe is required
                 if changehead then begin
                     ; reduce old pipe
@@ -119,7 +110,6 @@ if self.on then begin
                 ; add to file list
                 *self.filelist=[*self.filelist,datafile]
                 ; run file
-                print,'reducing file=',datafile
                 run=1b
                 self.pipeman->auto_open, datafile
             endif
@@ -136,7 +126,7 @@ endif
 end
 
 ;******************************************************************************
-;     AUTOCONF - Dialog the user to set properties
+;     AUTOCONF - event function for auto configuration dialog window
 ;******************************************************************************
 
 pro drip_automan::autoconf, event
@@ -190,7 +180,7 @@ case event.id of
         endif
         break
     end
-    ; ListFileButton: close window and save settings
+    ; ListFileButton: open file selection dialog
     (*self.autoconfstat).listfilebutton:begin
         if (*self.autoconfstat).stat ne 0 then begin
             ; get listfile
@@ -231,7 +221,7 @@ case event.id of
         endif
         break
     end
-    ; Chancel: close window
+    ; Chancel: close window, reset status
     (*self.autoconfstat).chancel:begin
         if (*self.autoconfstat).stat ne 0 then begin
             widget_control, event.top, /destroy
@@ -240,16 +230,10 @@ case event.id of
         break
     end
 endcase
-
-
-; pick file
-;listfile=dialog_pickfile(filter='*', /fix_filter, /must_exist, /read, $
-;      get_path=path, dialog_parent=event.top, file=self.listfile)
-;if strlen(listfile) eq 0 then return
 end
 
 ;******************************************************************************
-;     toogle - keep track of checkbox
+;     TOOGLE - toogle (activate / deactivate) auto reduce
 ;******************************************************************************
 
 pro drip_automan::toogle, event
@@ -267,14 +251,14 @@ endif else widget_control, self.automenu, set_value='Start Auto Reduce'
 end
 
 ;******************************************************************************
-;     listopen - check and open listfile (set controls)
+;     LISTOPEN - check and open listfile (set controls)
 ;******************************************************************************
 pro drip_automan::listopen
 ; open file and check
 err=0
 openr, lun, self.listfile, /get_lun, error=err
 if err eq 0 then begin
-    ; get file list
+    ; get file list from list file
     datafile=''
     *self.filelist=['']
     while not eof(lun) do begin
@@ -308,7 +292,7 @@ endelse
 end
 
 ;******************************************************************************
-;     START
+;     START - Make widgets and menu items
 ;******************************************************************************
 
 pro drip_automan::start, mbar, ctrlbase1
@@ -327,7 +311,7 @@ autobase=widget_base(ctrlbase1, /row, /nonexclusive, $
       event_pro='drip_eventhand', uvalue={object:self, method:'scan'})
 self.checkid=widget_button(autobase, value='Auto-Reduce', event_pro= $
         'drip_eventhand', uvalue={object:self, method:'toogle'}, $
-        font=largefont, sensitive=0, ysize=30)
+        font=mediumfont, sensitive=0, ysize=20)
 ; use autobase as the timer widget
 self.timerwid=autobase
 ; set auto configuration status
@@ -339,22 +323,24 @@ self->listopen
 end
 
 ;******************************************************************************
-;     CLEANUP
+;     CLEANUP - Save settings and free memory
 ;******************************************************************************
 
 pro drip_automan::cleanup
+; save configuration
 common gui_config_info, guiconf
 setpar,guiconf,'auto_listfile',self.listfile
 setpar,guiconf,'auto_pathskip',self.pathskip
 setpar,guiconf,'auto_pathadd',self.pathadd
 setpar,guiconf,'auto_resetvars',self.resetvars
+; free memory
 ptr_free, self.filelist
 ptr_free, self.basehead
 ptr_free, self.autoconfstat
 end
 
 ;******************************************************************************
-;     INIT
+;     INIT - Initialize structure
 ;******************************************************************************
 
 function drip_automan::init, mw, pipeman
@@ -364,7 +350,7 @@ self.basehead=ptr_new(/allocate_heap)
 *self.basehead=['']
 self.mw=mw
 self.pipeman=pipeman
-; get special variables from config information
+; get settings from stored configuration
 common gui_config_info, guiconf
 self.listfile=getpar(guiconf,'auto_listfile')
 if size(self.listfile,/type) ne 7 then self.listfile=''
@@ -374,7 +360,7 @@ self.pathadd=getpar(guiconf,'auto_pathadd')
 if size(self.pathadd,/type) ne 7 then self.pathadd=''
 self.resetvars=getpar(guiconf,'auto_resetvars')
 if size(self.resetvars,/type) ne 7 then self.resetvars=''
-; get automan configuration status memory
+; get automan configuration status window memory
 self.autoconfstat=ptr_new(/allocate_heap)
 return, 1
 end
@@ -384,9 +370,10 @@ end
 ;******************************************************************************
 
 pro drip_automan__define
+
 struct={drip_automan, $
         ; admin
-        on:0b, $              ; on/off
+        on:0b, $              ; flag for on/off
         ; files info
         listfile:'', $        ; name of list file (with path)
         pathskip:'', $        ; part of file name at start to skip
@@ -403,7 +390,7 @@ struct={drip_automan, $
         timerwid:0L, $        ; widget id of timer event handler widget
         ; configuration window
         autoconfstat:ptr_new(), $; record variable with status of
-                              ; popup window with auto configuration
+                              ; dialog window with auto configuration
         ; other objects
         pipeman:obj_new(), $  ; pipeline manager
         mw:obj_new()}         ; message window object

@@ -1,5 +1,5 @@
 ; NAME:
-;     CW_DRIP_MW - Version .7.0
+;     CW_DRIP_MW - Version 1.7.0
 ;
 ; PURPOSE:
 ;     Message window compound widget
@@ -12,24 +12,19 @@
 ;     XSIZE - X dimension of the display windows
 ;     YSIZE - Y dimension of the display windows
 ;
-; STRUCTURE:
-;     {DRIP_MW, VALUE, SIZE, LISTID}
-;     VALUE - listbox entries
-;     SIZE - number of entries
-;     LISTID - widget id of listbox
-;
 ; OUTPUTS:
 ;     ObjRef - the object reference of the associated object.
 ;
 ; CALLED ROUTINES AND OBJECTS:
 ;
-; SIDE EFFECTS:
+; PROCEDURE:
+;     This compound widget prints lines of text in a window. The last
+;     line is kept at the bottom of the window. Old lines are deleted
+;     after a maximum number of lines has been reached.
 ;
 ; RESTRICTIONS:
-;     container base widget id is lost.  returns object reference instead
-;
-; PROCEDURE:
-;     lay out widgets.  Create DRIP_MW object.  set in motion.
+;     Container base widget id is lost. Unlike other compound widgets,
+;     this widget returns an object reference instead.
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Alfred Lee, Cornell University, March, 2003
@@ -42,7 +37,7 @@
 ;******************************************************************************
 
 pro drip_mw::print, text
-
+; add the text to the existing lines
 if self.size eq 0 then val=text else begin
       val=[*self.value, text]
       if self.size gt self.sizemax-1 then val=val(1:self.sizemax)
@@ -50,15 +45,16 @@ endelse
 *self.value=val
 self.size=size(val, /n_elements)
 
-;top make it top
-top = self.size-5
-if top lt 0 then too = 0
+; determine top line
+top = self.size-9
+if top lt 0 then top = 0
 
+; set new text
 widget_control, self.listid, set_value=val, set_list_top=top
 end
 
 ;******************************************************************************
-;     CLEANUP
+;     CLEANUP - Free pointer heap variables
 ;******************************************************************************
 
 pro drip_mw::cleanup
@@ -66,7 +62,7 @@ ptr_free, self.value
 end
 
 ;******************************************************************************
-;     INIT
+;     INIT - Initialize structure
 ;******************************************************************************
 
 function drip_mw::init, list
@@ -102,14 +98,13 @@ pro drip_mw_eventhand, event
 end
 
 function cw_drip_mw, top, xsize=xs, ysize=ys, _extra=ex
-
-;lay out widgets
+; lay out widgets
 tlb=widget_base(top, /frame, /column, /align_center)
 list=widget_list(tlb, xsize=xs, ysize=ys, event_pro='drip_mw_eventhand', $
                  kill_notify='drip_mw_cleanup', _extra=ex)
-;create associated object, put in list uvalue
+; create associated object, put in list uvalue
 obj=obj_new('drip_mw', list)
 widget_control, list, set_uvalue=obj
-; returns obj not id of base widget
+; returns object, not id of base widget
 return, tlb
 end

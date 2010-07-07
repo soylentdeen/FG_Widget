@@ -1,7 +1,7 @@
 pro setpar, list, parname, value
 
 ; NAME:
-;   SETPAR - Version .1
+;   SETPAR - Version 1.1
 ;
 ; PURPOSE:
 ;   Setting a named parameter in a list of the form

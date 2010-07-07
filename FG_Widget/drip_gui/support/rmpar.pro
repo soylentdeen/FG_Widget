@@ -1,7 +1,7 @@
 pro rmpar, list, parname
 
 ; NAME:
-;   RMPAR - Version .1
+;   RMPAR - Version 1.1
 ;
 ; PURPOSE:
 ;   Removing a named parameter in a list of the form

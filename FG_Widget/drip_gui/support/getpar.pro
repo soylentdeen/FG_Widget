@@ -1,7 +1,7 @@
 function getpar, list, parname
 
 ; NAME:
-;   GETPAR - Version .1
+;   GETPAR - Version 1.1
 ;
 ; PURPOSE:
 ;   Returning a named parameter in a list of the form
@@ -48,7 +48,6 @@ function getpar, list, parname
   nfound=where((strpos(list,name) ge 0) and $
                (strpos(list,name) lt strpos(list,'=')), matches)
   if matches lt 1 then begin
-    ;message,'Keyword '+name+' not found'
     !ERR = -1
     return, long(-1)
   endif
