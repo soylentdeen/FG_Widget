@@ -288,3 +288,11 @@ xmanager, 'gui', top, cleanup='drip_cleanup', /no_block
 
 
 end
+
+
+; Added the following dummy functions to allow resolve_all to finish..
+PRO TRNLOG
+END
+
+PRO SETLOG
+END

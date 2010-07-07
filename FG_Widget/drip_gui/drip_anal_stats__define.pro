@@ -326,6 +326,7 @@ if (size(logfname))[1] ne 7 then begin
     setpar,guiconf,'LOGFILE',logfname
 end
 ; open file
+print, logfname
 openw,logfunit,logfname,/get_lun,/append
 ; if empty file add header
 logfstat=fstat(logfunit)
