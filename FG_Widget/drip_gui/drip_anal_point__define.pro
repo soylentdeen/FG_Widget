@@ -1,44 +1,32 @@
 ; NAME:
-;     DRIP_ANAL_POINT__DEFINE - Version .7.0
+;     DRIP_ANAL_POINT__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Point Source Analysis Objects for the GUI
+;     Point Source Analysis Objects for the GUI. This analysis object
+;     alows the user to analyze point sources.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANAL_POINT', MW)
-;
-; INPUTS:
-;     MW - Message manager object reference
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;     MW - message window object reference
-;     CLOSEWID - widget id for close button
-;     COLORWID - widget id for color selector
-;     TEXTWID1 - widget id for text display
-;     TEXTWID2 - widget id for text display
-;     TEXTWID3 - widget id for text display
-;     X0, Y0 - position of box
-;     SIZE - width and height of box
-;     COLOR - array for color values
-;     WID - window id of display
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     CW_DRIP_MW
+;     DRIP_ANAL_POINT inherits DRIP_ANAL
+;     DRIP_ANALMAN_POINT: This object creates ANAL_POINT and
+;                          assigns it screen widgets. ANALMAN_POINT
+;                          also creates and destroys ANAL_POINT
+;                          objects.
+;     CW_DRIP_DISP: DISPlays inform ANAL_POINT of changes in focus,
+;                   request updates redraws. ANAL_POINT draws the
+;                   corresponding circles on the display. DISP also
+;                   notifies ANAL_POINT of potential mouse actions,
+;                   moving the pointsource circles is done by
+;                   ANAL_POINT::MOVE.
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Beyond the normal analysis object functions (focus, title)
+;     ANAL_POINT allows the user to use an interactive point source
+;     analysis tool to determine the souce strength and S/N.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by image manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by: Marc Berthoud, Cornell University, June 2005
@@ -74,18 +62,18 @@ PRO drip_anal_point::update
 
 
         ; check circle locations (if nesessary change display circle)
-       ;  if ((self.centu+self.osradw) gt imgsize[1]-2) then begin
-;            diff=[self.osradw-self.isradw, self.osradw-self.apradw]
-;            self.osradw=imgsize[1]-2-self.centu
-;            self.isradw=self.osradw-diff[0]
-;            self.apradw=self.osradw-diff[1]
-;         endif
-;         if ((self.centv+self.osradw) gt imgsize[2]-2) then begin
-;            diff=[self.osradw-self.isradw, self.osradw-self.apradw]
-;            self.osradw=imgsize[2]-2-self.centv
-;            self.isradw=self.osradw-diff[0]
-;            self.apradw=self.osradw-diff[1]
-;         endif
+        ;  if ((self.centu+self.osradw) gt imgsize[1]-2) then begin
+        ;     diff=[self.osradw-self.isradw, self.osradw-self.apradw]
+        ;     self.osradw=imgsize[1]-2-self.centu
+        ;     self.isradw=self.osradw-diff[0]
+        ;     self.apradw=self.osradw-diff[1]
+        ;  endif
+        ;  if ((self.centv+self.osradw) gt imgsize[2]-2) then begin
+        ;     diff=[self.osradw-self.isradw, self.osradw-self.apradw]
+        ;     self.osradw=imgsize[2]-2-self.centv
+        ;     self.isradw=self.osradw-diff[0]
+        ;     self.apradw=self.osradw-diff[1]
+        ;  endif
         ; update circle positions in display coordinates
         self.centx=round(float(self.centu)*zoom)
         self.centy=round(float(self.centv)*zoom)
@@ -122,22 +110,24 @@ PRO drip_anal_point::update
 
         ;gain=float(drip_getpar(*self.basehead,'EPERADU')) ;get gain from header
         eperadu=1294 ; SWC and LWC electrons per A/D unit
-        source=total(buffer[apid],/nan)-total(buffer[skyid],/nan)*n_elements(apid)/n_elements(skyid)
+        source=total(buffer[apid],/nan)-total(buffer[skyid],/nan) * $
+               n_elements(apid)/n_elements(skyid)
         ; Calculate noise in photometry anulus
         ; Calulate sum of source pixel values (in electrons)
         source_electrons=source*eperadu
         ; Calculate photon noise of source by taking sqrt
         photon_noise=sqrt(source_electrons)
         ; Total noise is std of sky anulus + photon noise
-        noise=sqrt(n_elements(apid)*(stdev(buffer[skyid]*eperadu))^2+source_electrons)
+        noise=sqrt(n_elements(apid)*(stdev(buffer[skyid] * $
+                                           eperadu))^2+source_electrons)
         s2n=source_electrons/noise ; calculate S/N ratio
         ; Centroid and FWHM
         ;find centroid (xcen,ycen)
         
-        ;gcntrd,buffer[(xc-self.apradw):xc+(self.apradw),(yc-self.apradw):yc+(self.apradw)], $
+        ;gcntrd,buffer[(xc-self.apradw):xc+(self.apradw), $
+        ;              (yc-self.apradw):yc+(self.apradw)], $
         ;  xc,yc,xcen,ycen,self.apradw
-        ;  print,xcen,ycen
-        ;row and column intersecting the center of the aperture
+        ; row and column intersecting the center of the aperture
         rowx=buffer[xc,((yc-self.apradw)>0): ((yc+self.apradw)<bsz[2]-1)]
         rowy=buffer[((xc-self.apradw)>0):((xc+self.apradw)<bsz[1]-1),yc]
         ;in x direction
@@ -151,7 +141,7 @@ PRO drip_anal_point::update
         ;final fwhm is the average of fwhmx and fwhmy
         ;fwhm=(fwhmx+fwhmy)/2
         
-        ; NEW fit with gauss2dfit
+        ;** NEW fit with gauss2dfit
 
         ; boxsize = mean of inscribed and outer square of aperture circle
         boxsize=fix(0.85*float(self.apradw)+0.5)
@@ -178,7 +168,6 @@ PRO drip_anal_point::update
 
         ; fix format for table numbers
         all = [ fwhmx, fwhmy, source_electrons, noise, s2n ]
-        ;all = [ self.fitdu, self.fitdv, source_electrons, noise, s2n ]
         text = strarr(5)
         for i= 0,4 do begin
            x = all[i]

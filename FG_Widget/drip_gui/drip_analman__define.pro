@@ -1,33 +1,22 @@
 ; NAME:
-;     DRIP_ANALMAN__DEFINE - Version .7.0
+;     DRIP_ANALMAN__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Analysis Object Manager for the GUI
+;     Analysis Object Manager for the GUI. Each manager is responsible
+;     for one kind of analysis objects from all displays.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANALMAN', BASEID)
-;
-; INPUTS:
-;     BASEID - Widget ID of base to put widgets
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
+;     CW_DRIP_DISP: ANALMAN registers new ANALOBJs with the DISP
+;     DRIP_ANAL: ANALMAN creates, destroys and assigns widgets to ANALOBJs
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Upon ANALMAN::START this manager creates one ANALOBJ for each
+;     DISP.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by display manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, November 2007
@@ -57,22 +46,24 @@ end
 
 pro drip_analman::start, disps
 
-;**** create a general analysis object for each display
-;** make widgets
+; make widgets for object
 common gui_os_dependent_values, largefont, smallfont
 label=widget_label(self.topwid, value='Diaplay X Info:', font=largefont)
-;** initialize anal_objects
+; create a general analysis object for each display
 dispn=size(disps,/n_elements)
 self.analn=dispn
 *self.anals=objarr(dispn)
+; loop through all displays
 for i=0,dispn-1 do begin
+    ; make the title (i.e. Display X Info:)
     title='Display '+string(byte(i)+byte('A'))+' Info:'
+    ; create object and set it up
     anal=obj_new('drip_anal', disps[i], self, title)
     anal->setwid,label
+    ; register the analobj with the display and store it locally
     disps[i]->openanal, anal
     (*self.anals)[i]=anal
 endfor
-
 end
 
 ;****************************************************************************
@@ -109,7 +100,7 @@ end
 pro drip_analman__define
 
 struct={drip_analman, $
-        type:'', $            ; analysis object type
+        type:'', $            ; analysis object type (string)
         topwid:0L, $          ; ID of top widget
         analn:0, $            ; number of analysis objects
         anals:ptr_new()}      ; list of analysis objects

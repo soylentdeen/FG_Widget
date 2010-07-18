@@ -1,45 +1,35 @@
 ; NAME:
-;     DRIP_ANAL_STATS__DEFINE - Version .7.0
+;     DRIP_ANAL_STATS__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Statistics Analysis Objects for the GUI
+;     Statistics Analysis Objects for the GUI. This analysis object
+;     displays statistics about selected regions of the image.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANAL_STATS', MW)
-;
-; INPUTS:
-;     MW - Message manager object reference
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;     MW - message window object reference
-;     CLOSEWID - widget id for close button
-;     COLORWID - widget id for color selector
-;     TEXTWID1 - widget id for text display
-;     TEXTWID2 - widget id for text display
-;     TEXTWID3 - widget id for text display
-;     X0, Y0 - position of lower left corner of frame
-;     X1, Y1 - position of upper right corner of frame
-;              (legal indices from x0 to x1)
-;     COLOR - array for color values
-;     WID - window id of display
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     CW_DRIP_MW
+;     DRIP_ANAL_STATS inherits DRIP_ANAL
+;     DRIP_ANALMAN_STATS: This object creates ANAL_STATS and
+;                          assigns it screen widgets. ANALMAN_STATS
+;                          also creates and destroys ANAL_STATS
+;                          objects.
+;     CW_DRIP_DISP: DISPlays inform ANAL_STATS of changes in focus,
+;                   request updates redraws. ANAL_STATS draws the
+;                   corresponding box on the display. DISP also
+;                   notifies ANAL_STATS of potential mouse actions,
+;                   moving the stats box is done by ANAL_STATS::MOVE.
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Beyond the normal analysis object functions (focus, title)
+;     ANAL_STATS allows the user to use an interactive frame to set
+;     the color scale of the image. The three possible scaling options
+;     are Min-Max (highest / lowest value in the frame or user set),
+;     N-Sigma (Set scale from median-N*stddev . . . median+N*stddev)
+;     and Percent (same as Min-Max but ignore (100-Percentage)/2
+;     pixels with highest and lowest values.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by image manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by: Marc Berthoud, Cornell University, October 2003
@@ -87,8 +77,7 @@ if self.focus or self.show then begin
         med=median(img)
         npix=long(self.boxu1-self.boxu0+1)*long(self.boxv1-self.boxv0+1)
                        
-        ;print,mean,med,stddev,min,max,npix
-        ;fix format for all
+        ; fix format for all
         all = [ mean,med,stddev,min,max,npix ]
         text = strarr(6)
         for i= 0,5 do begin
@@ -101,12 +90,6 @@ if self.focus or self.show then begin
            text[i]=string(x,format=fmt)
         endfor
         self.datatext=text
-        print,text
-       
-        ;widget_control, self.datawid, get_value=preval
-        ;text=[[preval],[text]]
-        ;help,text
-        ;widget_control, self.datawid, set_value=text
         for i=1,6 do begin
            widget_control, self.datawid[i], set_value=text[i-1]
         endfor

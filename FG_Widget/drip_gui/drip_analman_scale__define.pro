@@ -1,30 +1,23 @@
 ; NAME:
-;     DRIP_ANALMAN_SCALE__DEFINE - Version .7.0
+;     DRIP_ANALMAN_SCALE__DEFINE - Version 1.7.0
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANALMAN_SCALE', BASEID)
+; PURPOSE:
+;     Analysis Object Manager for ANAL_SCALE objects.
 ;
-; INPUTS:
-;     BASEID - Widget ID of base to put widgets
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
+;     DRIP_ANALMAN_SCALE inherits DRIP_ANALMAN
+;     CW_DRIP_DISP: ANALMAN_SCALE registers new ANALOBJs with the DISP
+;     DRIP_ANAL_SCALE: ANALMAN_SCALE creates, destroys and assigns
+;                       widgets to ANAL_SCALE_OBJs
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Upon ANALMAN_SCALE::START this manager creates one
+;     ANAL_SCALE_OBJ for each DISP.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by display manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, November 2007
@@ -35,8 +28,7 @@
 
 pro drip_analman_scale::start, disps, dataman
 
-;**** create a general analysis object for each display
-;** make widgets
+;** make widgets for object
 common gui_os_dependent_values, largefont, smallfont, mediumfont
 ; header
 headwid=widget_base(self.topwid, /column, /align_top)
@@ -47,38 +39,17 @@ topbase=widget_base(setbase, /row,/align_center)
 toplabel=widget_label(topbase, value='Top')
 topwid=widget_button(topbase, value='X' )
 
-;base
+; base
 rightbase=widget_base(self.topwid,/column)
 
-;Radio-Button base
+; Radio-Button base
 radiobase=widget_base(rightbase,/row,/Exclusive,/align_center)
 minmaxbutton=widget_button(radiobase,value='Min-Max', font=mediumfont)
 nsigmabutton=widget_button(radiobase,value='N-Sigma', font=mediumfont)
 percenbutton=widget_button(radiobase,value='Percent', font=mediumfont)
 widget_control,minmaxbutton,set_button=1
 
-;; Min-Max Scaling
-;; minmaxbase=widget_base(rightbase,/row)
-;; minbase
-;; minbase=widget_base(minmaxbase, /row )
-;; min values
-;; minfield=widget_base(minbase, /row )
-;; mintext=cw_field(minfield, title='Min :', /floating, /return_events,$
-;;                  xsize=5,ysize=3 )
-;; automin=widget_base(minfield, /column, /nonexclusive)
-;; minautoset=widget_button(automin, value='Auto ' )
-
-;; maxbase
-;; maxbase=widget_base(minmaxbase, /row )
-
-;; max values
-;; maxfield=widget_base(maxbase, /row)
-;; maxtext=cw_field(maxfield, title='Max :', /floating, /return_events,$
-;;                  xsize=5,ysize=3 )
-;; automax=widget_base(maxfield, /column, /nonexclusive)
-;; maxautoset=widget_button(automax, value='Auto' )
-
-;** initialize anal_objects
+; initialize anal_objects
 dispn=size(disps,/n_elements)
 self.analn=dispn
 *self.anals=objarr(dispn)
@@ -88,9 +59,6 @@ for i=0,dispn-1 do begin
                     'Scale:', wid)
     anal->setwid, label, colorwid, topwid,$
                   minmaxbutton, nsigmabutton, percenbutton, rightbase
-                                ;minmaxbase,  mintext, minautoset, $
-                                ;maxtext, maxautoset, $
-                  
     disps[i]->openanal, anal
     (*self.anals)[i]=anal
 endfor

@@ -1,42 +1,34 @@
 ; NAME:
-;     DRIP_DATAMAN - Version .7.0
+;     DRIP_DATAMAN - Version 1.7.0
 ;
 ; PURPOSE:
-;     Data manager for the GUI
+;     Data manager to store and serve all data displayed in the GUI
 ;
-; DEFINITIONS
+; DEFINITIONS:
 ;     DAP = DAta Products
-;           Record with any data, name is the only one required
+;           IDL structure with any format. One element, caled 'name' is
+;           is required.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_DATAMAN', DISP)
-;     Obj->START
-;
-; INPUTS:
-;     DISP - 4 element list of CW_DRIP_DISP widget id's
-;
-; STRUCTURE:
-;     {DRIP_DATAMAN, DISP_OBJS, FRAME_INDEX, STRUCTURE}
-;     DISP_OBJS - DRIP_DISP object references (from cw_drip_disp widgets)
-;     PIPE_STEPS - the dripipeline output structure (see DRIP__DEFINE::GETDATA)
-;     PIPE_STEPS_SUM SUMSTRUCT - sum of previous drip outputs
-;     DEC_OLD - old decomposition state (to restore it)
-;     MW - message window object
-;     N - counter used for averaging running sums
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
+;   The DRIP_DATAMAN does not use any other objects.
+;   DRIP_MENU and DRIP_PIPEMAN: change DAP data and issue channelcall
+;                               commands
+;   DRIP_ANAL_SELECT: Uses DRIP_DATAMAN for sending data to the displays.
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;   Dataman stores all the GUI data as DAPs in an array of structures.
+;   Other GUI objects set and get DAPs and DAP elements using the
+;   dataman member functions. The dataman also stores a list of all
+;   the GUI objetcs that need to be notifed (channelcall) if any data
+;   has been changed. It is also possible to use and access the dataman
+;   from the IDL command line. Finally, the dataman is part of the GUI
+;   and it's widgets allows the user to view dap info, edit DAP
+;   names and delete DAPs.
 ;
 ; RESTRICTIONS:
 ;     Use dapnew, get/setdap, get/set/checkelement to avoid inconsistencies
-;
-; PROCEDURE:
-;     Contain data regarding draw windows, widgets, data sources, etc.  Handle
-;     events.
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Alfred Lee, Cornell University, 2002
@@ -260,7 +252,7 @@ function drip_dataman::checkelement, dap, element, size=size
 if keyword_set(size) then retval=[0,0,0] else retval=0
 ; check if any daps available
 if self.dapn eq 0 then return, retval
-; get dap pointer if dap is a dapname
+; get dap pointer if dap is not a pointer
 if ptr_valid(dap) eq 0 then begin
     ; check if dap is a string
     if size(dap,/type) ne 7 then return, retval
@@ -296,7 +288,7 @@ end
 pro drip_dataman::setelement, dap, element, data
 ; abort if no daps available
 if self.dapn eq 0 then return
-; get dap pointer if dap is a dapname
+; get dap pointer if dap is not a pointer
 if ptr_valid(dap) eq 0 then begin
     ; check if dap is a string
     if size(dap,/type) ne 7 then return
@@ -345,13 +337,13 @@ endif else *dapptr=create_struct(*dapptr,element,data)
 end
 
 ;******************************************************************************
-;     LISTELEMENT - Returns number and list of elements in a dap
+;     LISTELEMENT - Returns number and list of elements in a DAP
 ;******************************************************************************
 function drip_dataman::listelement, dap, list
 ; make fake list in case error is detected
 list=['listelement_error']
 if self.dapn eq 0 then return, 0
-; get dap pointer if dap is a dapname
+; get dap pointer if dap is not a pointer
 if ptr_valid(dap) eq 0 then begin
     ; check if dap is a string
     if size(dap,/type) ne 7 then return, 0
@@ -371,7 +363,7 @@ return,n_tags(*dapptr)
 end
 
 ;******************************************************************************
-;     CHANNELADD - Adds an Object to be Notified if the daps change
+;     CHANNELADD - Adds an Object to be Notified if the DAPs change
 ;                  An object stays added until it is destroyed
 ;******************************************************************************
 pro drip_dataman::channeladd, object
@@ -387,6 +379,7 @@ end
 ;                   ones from list
 ;******************************************************************************
 pro drip_dataman::channelcall
+; only run if channelcall is not already running
 if self.channelcalling eq 0 then begin
     ; set channelcalling
     self.channelcalling=1
@@ -402,14 +395,15 @@ if self.channelcalling eq 0 then begin
             objcp=objcp+1
         endif
     endfor
+    ; shorten the object list for invalid objects
     self.channeln=objcp+1
-    ;** set dap_select
+    ;** set list of DAPs in dap_select widget
     ; get list for dap_select
     dapn=self->listdap(dapnames)
     dapnames=[dapnames,'']
     ; IF dapn > 0 (i.e. daps present)
     if dapn gt 0 then begin
-        ; get index of selected dap
+        ; get index of currently selected dap
         dapi=-1
         repeat dapi=dapi+1 $
           until (dapi eq dapn) or (dapnames[dapi] eq self.dapsel)
@@ -417,13 +411,14 @@ if self.channelcalling eq 0 then begin
             dapi=0
             self.dapsel=dapnames[0]
         endif
-        ; set widget
+        ; set widgets
         widget_control, self.dap_select, set_droplist_select=dapi, $
           set_value=dapnames[0:dapn-1], sensitive=1
         widget_control, self.dap_rename, sensitive=1
         widget_control, self.dap_delete, sensitive=1
     ; ELSE ( dapn == 0 i.e. no daps )
     endif else begin
+        ; set widgets
         widget_control, self.dap_select, set_droplist_select=0, $
           set_value=['No Data Products'], sensitive=0
         widget_control, self.dap_rename, sensitive=0
@@ -442,9 +437,9 @@ end
 pro drip_dataman::callinfo, dapsel=dapsel
 ;** make dap_info message
 COMMON gui_os_dependent_values, largefont, smallfont
-; copy if dapsel is set
+; if dapsel is set, copy the value
 if keyword_set(dapsel) then self.dapsel=dapsel
-; get dap
+; get DAP
 if self.dapn gt 0 then begin
     ; get dap (pointer) and dapind
     dapn=self->listdap(dapnames)
@@ -506,19 +501,21 @@ endif else begin
     for i=0,3 do for j=0,1 do (*self.dap_infoval)[j*2+1,i]=''
     dapind=0
 endelse
+; update widget text
 widget_control, self.dap_info, set_value=*self.dap_infoval
 widget_control, self.dap_select, set_droplist_select=dapind
 end
 
 ;******************************************************************************
 ;     PRINTDAP - prints list of all daps with all elements
+;       (for command line use)
+;       Sample Output:
+;       DAP0=mathstuff
+;         ELEM0=name[Scalar/String]="mathstuff"
+;         ELEM1=n[Scalar/Integer]=5
+;         ELEM2=arr[2D(2,2)/Float]:med=1.0 mean=0.5 min=0.0 max=1.0
 ;******************************************************************************
 pro drip_dataman::printdap
-; print list like
-; DAP0=mathstuff
-;   ELEM0=name[Scalar/String]="mathstuff"
-;   ELEM1=n[Scalar/Integer]=5
-;   ELEM2=arr[2D(2,2)/Float]:med=1.0 mean=0.5 min=0.0 max=1.0
 
 ;** Loop through daps
 for dapi=0, self.dapn-1 do begin
@@ -534,7 +531,7 @@ for dapi=0, self.dapn-1 do begin
     for elemi=0, elemn-1 do begin
         ; get element value
         elemval=(*dapptr).(elemi)
-        ; get size - make size string
+        ; get element size -> make size string
         elemsiz=size(elemval)
         elemdim=elemsiz[0]
         elemtype=elemsiz[elemdim+1]
@@ -608,7 +605,7 @@ endfor
 end
 
 ;******************************************************************************
-;     PRINTHELP - prints list of all commands
+;     PRINTHELP - prints list of all commands (for command line use)
 ;******************************************************************************
 pro drip_dataman::printhelp
 
@@ -636,17 +633,17 @@ print,"    **!! if using GUI call this after using setdap or setelement !!**"
 end
 
 ;******************************************************************************
-;     INPUT - user input handler
+;     INPUT - user input handler for widgets
 ;******************************************************************************
 pro drip_dataman::input, event
 case event.id of
-    ; select dap
+    ; select DAP
     self.dap_select: begin
         dapn=self->listdap(dapnames)
         self.dapsel=dapnames[event.index]
         self->callinfo
     end
-    ; rename dap
+    ; rename current DAP
     self.dap_rename: begin
         newname=dialog_input('Enter New Name for '+self.dapsel)
         if strlen(newname) gt 0 then begin
@@ -655,6 +652,7 @@ case event.id of
             self->channelcall
         endif
     end
+    ; delete current DAP
     self.dap_delete: begin
         self->killdap,self.dapsel
         self->channelcall
@@ -663,7 +661,7 @@ endcase
 end
 
 ;******************************************************************************
-;     START - Start up
+;     START - Creates the widgets to display DAP information
 ;******************************************************************************
 
 pro drip_dataman::start, cbase0
@@ -699,7 +697,7 @@ widget_control, self.dap_info, set_value=*self.dap_infoval
 end
 
 ;******************************************************************************
-;     CLEANUP
+;     CLEANUP - Free pointer heap variables
 ;******************************************************************************
 
 pro drip_dataman::cleanup
@@ -711,7 +709,7 @@ ptr_free, self.dap_infoval
 end
 
 ;******************************************************************************
-;     INIT
+;     INIT - Initialize structure
 ;******************************************************************************
 
 function drip_dataman::init, mw
@@ -730,17 +728,18 @@ pro drip_dataman__define
 struct={drip_dataman, $
         mw:obj_new(), $          ;message window object
         ; data analysis products (DAPs)
-        dapn:0, $                ; number of daps
-        daps:ptrarr(50), $       ; pointers to daps
-        dapsel:'', $             ; name of currently selected dap
+        dapn:0, $                ; number of DAPs
+        daps:ptrarr(50), $       ; pointers to DAPs
+        dapsel:'', $             ; name DAP of currently selected
         ; IDs of screen widgets
-        dap_info:0L, $           ; widget id of dap information table
-        dap_select:0L, $         ; widget id of dap selection pulldown
-        dap_rename:0L, $         ; widget id of dap rename button
-        dap_delete:0L, $         ; widget id of dap delete button
-        dap_infoval:ptr_new(), $ ; the dap information table
-        ; channels to be called if daps change
+        dap_info:0L, $           ; widget id of DAP information table
+        dap_select:0L, $         ; widget id of DAP selection pulldown
+        dap_rename:0L, $         ; widget id of DAP rename button
+        dap_delete:0L, $         ; widget id of DAP delete button
+        dap_infoval:ptr_new(), $ ; the DAP information table
+        ; channels (i.e. other objects) to be called if DAPs change
         channeln:0, $            ; number of channels
-        channels:objarr(20), $   ; object references to objects to notify
-        channelcalling:0}        ; 1 if in the process of calling channels
+        channels:objarr(20), $   ; object references to objects to call
+        channelcalling:0}        ; flag set to 1 while calling channels
+                                 ; (to avoid nested calls)
 end

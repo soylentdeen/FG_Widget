@@ -1,35 +1,24 @@
 ; NAME:
-;     DRIP_ANAL__DEFINE - Version .7.0
+;     DRIP_ANAL__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Analysis Objects for the GUI
+;     Analysis Objects for the GUI. This analysis object displays a
+;     title for it's GUI display.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANAL', MW)
-;
-; INPUTS:
-;     MW - Message manager object reference
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;     MW - message window object reference
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     CW_DRIP_MW
+;     DRIP_ANALMAN: These objects create ANALOBJs and assign it screen
+;                   widgets
+;     CW_DRIP_DISP: DISPlays inform ANALOBJs of changes in focus,
+;                   request updates and redraws
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Whenever the display associated with this analysis object comes
+;     into focus, the new title is displayed.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by displays and analysis object manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, October 2003
@@ -58,7 +47,7 @@ pro drip_anal::draw
 end
 
 ;****************************************************************************
-;     INPUT - reaction to moving screen sign
+;     INPUT - reacts to user input
 ;****************************************************************************
 
 pro drip_anal::input, event

@@ -1,4 +1,4 @@
-pro fitsdir ,directory, TEXTOUT = textout, Keywords = keywords, $ 
+pro fitsdir, file_names, keyvalue, directory, TEXTOUT = textout, Keywords = keywords, $ 
      nosize = nosize, alt1_keywords=alt1_keywords, alt2_keywords=alt2_keywords,$
      alt3_keywords = alt3_keywords, NoTelescope = NoTelescope,exten=exten
 ;+
@@ -315,9 +315,13 @@ pro fitsdir ,directory, TEXTOUT = textout, Keywords = keywords, $
  endfor
  fmt = fmt + ')'
 
- for i=0,n-1 do printf, f= fmt, $
-      !TEXTUNIT,fname[i],bignaxis[i], keyvalue[i,*]
+ for i=0,n-1 do begin
+ printf, f= fmt, !TEXTUNIT,fname[i],bignaxis[i], keyvalue[i,*]
+ ;print,fname[i],keyvalue[i,*]
+ endfor
     
  textclose,textout=textout 
- return      ;Normal return   
+ 
+ file_names = fname
+ return     ;Normal return   
  end

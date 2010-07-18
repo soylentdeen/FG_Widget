@@ -1,7 +1,7 @@
 function keyword_replace, header, changelist
 
 ; NAME:
-;   KEYWORD_REPLACE - Version .1
+;   KEYWORD_REPLACE - Version 1.1
 ;
 ; PURPOSE:
 ;   Replace / Add a list of keyword values in a fits header

@@ -1,33 +1,27 @@
 ; NAME:
-;     DRIP_ANALMAN_POINT__DEFINE - Version .7.0
+;     DRIP_ANALMAN_POINT__DEFINE - Version 1.7.0
 ;
 ; PURPOSE:
-;     Analysis Object Manager for the GUI
+;     Analysis Object Manager for ANAL_POINT objects.
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANALMAN_POINT', BASEID)
-;
-; INPUTS:
-;     BASEID - Widget ID of base to put widgets
-;
-; STRUCTURE:
-;     TITLE - object title
-;     FOCUS - focus status (1 if in focus else 0)
-;     DISPOBJ - display object
-;     BASEWID - base widget
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
+;     DRIP_ANALMAN_POINT inherits DRIP_ANALMAN
+;     CW_DRIP_DISP: ANALMAN_POINT registers new ANALOBJs with the DISP
+;     DRIP_ANAL_POINT: ANALMAN_POINT creates, destroys and assigns
+;                       widgets to ANAL_POINT objects. ANALMAN_POINT also
+;                       creates and destroys these objects.
+;     DRIP_DISPMAN: DISPMAN calls ANALMAN_POINT::SETALLWID whenever a
+;                   different DISP is in focus. SETALLWID then assigns
+;                   existing and new widgets to the ANAL_POINT objects.
 ;
-; SIDE EFFECTS:
-;     None
+; PROCEDURE:
+;     Upon ANALMAN_POINT::START this manager sets up the basic widgets
+;     for ANAL_POINT object management.
 ;
 ; RESTRICTIONS:
 ;     In developement
-;
-; PROCEDURE:
-;     Gets called by display manager
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Marc Berthoud, Cornell University, November 2007
@@ -106,7 +100,6 @@ if self.analn gt 0 then begin
     if focid ge idi then analnext++
 endif
 ; add to list (in order)
-;print,'openanal:',analobjn,analnext
 if analnext gt 0 then anals=[(*self.anals)[0:analnext-1],analnew] $
   else anals=[analnew]
 if analnext ge self.analn then *self.anals=anals $
@@ -158,7 +151,7 @@ for anali=0,self.analn-1 do begin
                                        xsize=32, ysize=19)
             ; make 4 widgets in a row for data table
             data=lonarr(4)
-            row=widget_base((colwids.data)[0], column=4,/frame)
+            row=widget_base((colwids.data)[0], column=4)
             for i=0,3 do begin
                label=widget_label(row,xsize=65, font=smallfont,/align_center)
                data[i]=label

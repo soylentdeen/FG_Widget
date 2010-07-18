@@ -1,47 +1,24 @@
 ; NAME:
-;     DRIP_MENU - Version .7.0
+;     DRIP_MENU - Version 1.7.0
 ;
 ; PURPOSE:
 ;     Menu item manager for the GUI
 ;
-; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_MENU', DATAMAN, DISPMAN, DROPMAN, AUTOMAN, MW)
-;
-; INPUTS:
-;     DATAMAN - Data Manager object reference
-;     DISPMAN - Display Manager object reference
-;     DROPMAN - Droplist Manager object reference
-;
-; STRUCTURE:
-;     {DRIP_MENU, FILELIST, PATH, DISPMAN, DROPMAN, DRIP, MODE, AUTOMAN, I, N}
-;     FILELIST - String array of filenames to be reduced.
-;     PATH - string containing path of files.
-;     DATAMAN - datalay manager object reference
-;     DISPMAN - display manager object reference
-;     DROPMAN - droplist manager object reference
-;     DRIP - drip object reference
-;     MODE - current data reduction mode
-;     AUTO - state of auto-reduce checkbox
-;     FILEINFO - widget id of file information text window
-;     I - current item of filelist
-;     N - number of items in filelist
-;     MW - message window object
-;
-; OUTPUTS:
+; CALLING SEQUENCE / INPUTS / OUTPUTS: NA
 ;
 ; CALLED ROUTINES AND OBJECTS:
-;     DRIP__DEFINE
-;
-; SIDE EFFECTS:
-;     None Known
-;
-; RESTRICTIONS:
-;     memory not efficiently handled.
+;     Manager Objects: Sends them the reset command if the interface
+;                      is reset
+;     CW_DRIP_MW: Used to send messages to the user
+;     DRIP_PIPEMAN: MENU checks if there is unsaved data upon exit
+;     DRIP_DATAMAN: Is used to store FITS data
 ;
 ; PROCEDURE:
-;     handle menu events.  upon selecting files through OPEN, filenames and the
-;     path are added to a filelist.  upon RUNning, these files are reduced
-;     sequentially.
+;     MENU handles general GUI functions like EXIT, RESET and opening
+;     normal (non-forcast) FITS files.
+;
+; RESTRICTIONS:
+;     None
 ;
 ; MODIFICATION HISTORY:
 ;     Written by:  Alfred Lee, Cornell University, 2002
@@ -98,9 +75,9 @@ if files[0] ne '' then begin
         print,'clen=',clen
         print,names
     endif else clen=0
-    ; in names replace chars like . / - ? with '_' (else create_struct barfs)
+    ; in names replace chars like . / - ? with '_' (else create_struct fails)
     for i=0,n-1 do begin
-        s=names[i] ; this has 2 be done b/c strput,names[i] barfs
+        s=names[i] ; this has 2 be done b/c strput,names[i] fails
         for j=0,strlen(s)-1 do begin
             if stregex(strmid(s,j),'[0-9A-Za-z]') ne 0 then $
               strput,s,'_',j
@@ -171,56 +148,48 @@ end
 
 pro drip_menu::exit, event
 
-;querry user for unsaved reduced files
+; querry user for unsaved reduced files
 saveflag=self.pipeman->getdata(/saveflag)
-
+skipexit=0 ; flag to set if exit is not requested
 if not(saveflag) then begin
    reply=dialog_message('Reduced Data is not saved. Do wish to save it?',$
-                        /question,$
-                        /cancel,$
-                        /center,$
-                        dialog_parent=event.top)
+                        /question, /cancel, /center, dialog_parent=event.top)
    case reply of
       'Yes': self.pipeman->save
         ;if cancel then dont exit
-      'Cancel':goto,skipexit
+      'Cancel':skipexit=1
       'No':
    endcase
 endif else begin
    reply=dialog_message('Are you sure you want to exit?',$
-                        /question,$
-                        /center,$
-                        dialog_parent=event.top)
-   if (reply eq 'No') then goto, skipexit
-
+                        /question, /center, dialog_parent=event.top)
+   if (reply eq 'No') then skipexit=1
 endelse
 
-
-; querry configuration name if necessary
-common gui_config_info, guiconf
-conffilename=guiconf[0]
-if strlen(conffilename) eq 0 then begin
-   conffilename=dialog_pickfile(/write, $
-                                title='Save GUI Conf File:',$
-                                file='guiconf.txt')
+; exit program is requested
+if not(skipexit) then begin
+    ; querry configuration name if necessary
+    common gui_config_info, guiconf
+    conffilename=guiconf[0]
+    if strlen(conffilename) eq 0 then begin
+       conffilename=dialog_pickfile(/write, title='Save GUI Conf File:',$
+                                    file='guiconf.txt')
+    endif
+    guiconf[0]=conffilename
+    ; destroy top widget
+    widget_control, event.top, /destroy
 endif
-guiconf[0]=conffilename
-; destroy top widget
-widget_control, event.top, /destroy
-
-skipexit:
-
 end
 
 ;******************************************************************************
-;     START
+;     START - Makes widgets
 ;******************************************************************************
 
 pro drip_menu::start, mbar, disp_sels=disp_sels
 
 ;** make all menu options
-; menu options: Reset
 file_menu=widget_button(mbar, value='File', /menu)
+; menu options: Reset
 clear=widget_button(file_menu, value='Reset', event_pro='drip_eventhand', $
       uvalue={object:self, method:'reset'})
 ; make fits open menu (one for every display)
@@ -255,7 +224,7 @@ exit=widget_button(file_menu, value='Quit', event_pro='drip_eventhand', $
 end
 
 ;******************************************************************************
-;     CLEANUP
+;     CLEANUP - Save settings, free pointer heap variables
 ;******************************************************************************
 
 pro drip_menu::cleanup
@@ -269,13 +238,13 @@ ptr_free, self.fitsmenuids
 end
 
 ;******************************************************************************
-;     INIT
+;     INIT - Initialize structure
 ;******************************************************************************
 
-function drip_menu::init, dataman, mw, manobjlist
+function drip_menu::init, dataman, pipeman, mw, manobjlist
 ; set standart variables
 self.dataman=dataman
-self.pipeman=manobjlist[1]
+self.pipeman=pipeman
 self.mw=mw
 self.manobjlistn=n_elements(manobjlist)
 self.manobjlists=manobjlist
@@ -300,14 +269,14 @@ end
 
 pro drip_menu__define
 struct={drip_menu, $
-        loadfitspath:'', $    ; loading directory for fits files
-        loadfilter:ptr_new(),$; filters for loading images
+        loadfitspath:'', $    ; loading directory for fits images
+        loadfilter:ptr_new(),$; filters for loading fits images
         dataman:obj_new(), $  ; data manager
-        pipeman:obj_new(),$
+        pipeman:obj_new(),$   ; pipe manager
         manobjlistn:0, $      ; number of manager objects
         manobjlists:objarr(20),$ ; array for manager objects
         disp_sels:ptr_new(),$ ; array of display anal select objects
         fitsmenuids:ptr_new(),$ ; widget id of open fits sub-menus
-                                ; is [0] if no disp_sels available
+                                ; is [0] if no disp_sels are available
         mw:obj_new() }        ; message window object
 end
