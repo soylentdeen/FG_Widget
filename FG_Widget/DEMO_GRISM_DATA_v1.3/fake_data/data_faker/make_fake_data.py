@@ -47,8 +47,8 @@ class Slit( object ):
         ptsource = mlab.bivariate_normal(X, Y, self.FWHM, self.FWHM, len(x)/2.0+(self.object_location-0.5)*self.length, len(y)/2.0)
 
         sky = numpy.zeros([len(y), len(x)])
-        for i in numpy.arange(len(x)/2.0-self.length/2.0, len(x)/2.0+self.length/2.0, 0.1):
-            for j in numpy.arange(len(y)/2.0-self.width/2.0, len(y)/2.0+self.width/2.0, 0.1):
+        for i in numpy.arange(len(x)/2.0-self.length/2.0, len(x)/2.0+self.length/2.0, 0.5):
+            for j in numpy.arange(len(y)/2.0-self.width/2.0, len(y)/2.0+self.width/2.0, 0.5):
                 sky += ((numpy.random.randn(1))**2.0)*mlab.bivariate_normal(X, Y, self.FWHM, self.FWHM, i, j)
 
         #ptsource = mlab.bivariate_normal
@@ -60,11 +60,11 @@ plt = Gnuplot.Gnuplot()
 
 PSF_FWHM = 2.0
 slit_x = 2
-slit_y = 18
+slit_y = 256
 
 n_frames = 8
 
-data_file = 'raw_data.fits'
+data_file = 'raw_G1_data.fits'
 
 short_slit = Slit(slit_x, slit_y, PSF_FWHM)
 short_slit.point_source(0.5)
@@ -80,17 +80,17 @@ y = numpy.arange(-neg_y, 256+pos_y, delta)
 X, Y = numpy.meshgrid(x, y)
 show_mask = scipy.where( (X >= 0) & (X < 256) & (Y >= 0) & (Y < 256))
 
-x_right = [159, 255, 255, 255, 255, 255, 255, 255]
-x_left = [0, 0, 0, 0, 0, 0, 0, 0]
-y_right = [233, 210, 177, 143, 110, 84, 58, 38]
-y_left = [202, 162, 127, 98, 69, 46, 20, 0]
+#x_right = [159, 255, 255, 255, 255, 255, 255, 255]
+#x_left = [0, 0, 0, 0, 0, 0, 0, 0]
+#y_right = [233, 210, 177, 143, 110, 84, 58, 38]
+#y_left = [202, 162, 127, 98, 69, 46, 20, 0]
 m = [0, 1, 2, 3, 4, 5, 6, 7]
-#x_right = [159]
-#x_left = [0]
-#y_right = [233]
-#y_left = [202]
+x_right = [256]
+x_left = [0]
+y_right = [0]
+y_left = [0]
 spectrum = []
-outfile = 'input_spectrum.txt'
+outfile = 'input_G1_spectrum.txt'
 with open(outfile, 'w') as file:
     file.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
     file.write('\n')
