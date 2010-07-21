@@ -104,12 +104,14 @@ end
 ;                -> dataraw is filled, updates analysis objects
 ;******************************************************************************
 
-pro drip_disp::imageset, image, text
+pro drip_disp::imageset, image, text, dapname
 
 ; set text
 widget_control, self.text, set_value=text
 ; set image
 *self.dataraw=image
+; set dap name
+self.dapname=dapname
 ; set initial scaleing values
 self.colormin=min(image)
 self.colormax=max(image)
@@ -399,17 +401,17 @@ end
 ;******************************************************************************
 
 function drip_disp::getdata, $
-         dataraw=daraw, dispraw=dpraw, dispimg=dpimg, $
+         dataraw=daraw, dispraw=dpraw, dispimg=dpimg, dapname=dn, $
          colormin=cmin, colormax=cmax, $
          text=text, label=la, drop_sum=dpsum, draw=dr, drop_step=dpstep, $
          wid=wid, drop_frame=dpframe, button=bu, $
          xsize=xs, ysize=ys, zoom=zm, $
-         frame_sel=framesel, step_sel=stepsel, sum_sel=sumsel, $
          disp_id=id, analn=an, anals=as
 
 if keyword_set(daraw) then return, self.dataraw
 if keyword_set(dpraw) then return, self.dispraw
 if keyword_set(dpimg) then return, self.dispimg
+if keyword_set(dn) then return, self.dapname
 if keyword_set(cmin) then return, self.cmin
 if keyword_set(cmax) then return, self.cmax
 if keyword_set(text) then return, self.text
@@ -470,6 +472,7 @@ self.mousey=0
 self.zoom=1.0
 self.colormin=0.0
 self.colormax=1.0
+self.dapname=''
 self.analn=0
 
 return, 1
@@ -486,6 +489,7 @@ struct={drip_disp, $
     dataraw:ptr_new(), $        ;2D raw image data
     dispraw:ptr_new(), $        ;raw image color scaled (needed for dispman)
     dispimg:ptr_new(), $        ;image in display color scaled & resized
+    dapname:'', $               ;dap name of dap currently in display
     colormin:0D, $              ;datavalue of black data
     colormax:0D, $              ;datavalue of white data
     ; object variables

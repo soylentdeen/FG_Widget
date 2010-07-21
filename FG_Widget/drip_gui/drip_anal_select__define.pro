@@ -144,7 +144,7 @@ endif else begin
    self.framen=0
 endelse
 ;** pass image (2d) to display
-self.disp->imageset,image,imgtext
+self.disp->imageset,image,imgtext,dapname
 end
 
 ;****************************************************************************

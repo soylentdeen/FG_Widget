@@ -175,6 +175,7 @@ END
 ;******************************************************************************
 pro drip_extman::extract
 
+common drip_config_info, dripconf
 
 ;extract
 data=*self.data
@@ -197,40 +198,57 @@ for i= 0,n_elements(xvalue)-1 do begin
     sub_array[i,*]=data[xvalue[i],yvalue[i]:(yvalue[i]+dy)]
 endfor
 
-n_segments = 16
-segment_size = floor(n_elements(sub_array[*,0])/n_segments)
+header = self.dataman->getelement(self.dapsel_name,'HEADER')
+extraction_mode = drip_getpar(header, 'EXTMODE')
+;extraction_mode = drip_getpar(dataman->getelement(self.dapsel,'header'), 'extmode')
 
-xx = intarr(n_segments)
-yy = intarr(n_segments)
-
-for i = 0,n_segments-1 do begin
-   
-   print, i*segment_size
-   print, (i+1)*segment_size-1
-   piece = sub_array[i*segment_size:(i+1)*segment_size-1,*]
-   collapsed = total(piece,1)
-
-   collapse_fit = gaussfit(findgen(n_elements(collapsed)), collapsed, A)
-   xx[i] = (i+0.5)*segment_size
-   yy[i] = A[1]
-
-endfor
-
-fit_result = POLY_FIT(xx,yy,2)
-x = findgen(n_elements(sub_array[*,0]))
-y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
-
-ycoord = findgen(n_elements(sub_array[0,*]))
-
-extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
-
-for i = 0, n_elements(extracted_spectrum)-1 DO BEGIN
-   filter = lorentz(ycoord, y[i], 3.0)
-   extracted_spectrum[i] = total(sub_array[i,*]*filter/max(filter))
-ENDFOR
-
+print, size(header)
+print, self.dapsel_name
+print, 'Extraction mode : ', extraction_mode
+case extraction_mode of
+   'OPTIMAL': begin
+              ; Optimal Extraction Begins here
+                 n_segments = 16
+                 segment_size = floor(n_elements(sub_array[*,0])/n_segments)
+              
+                 xx = intarr(n_segments)
+                 yy = intarr(n_segments)
+              
+                 for i = 0,n_segments-1 do begin
+                     print, i*segment_size
+                     print, (i+1)*segment_size-1
+                     piece = sub_array[i*segment_size:(i+1)*segment_size-1,*]
+                     collapsed = total(piece,1)
+                  
+                     collapse_fit = gaussfit(findgen(n_elements(collapsed)),$
+                                     collapsed, A)
+                     xx[i] = (i+0.5)*segment_size
+                     yy[i] = A[1]
+                 endfor
+              
+                 fit_result = POLY_FIT(xx,yy,2)
+                 x = findgen(n_elements(sub_array[*,0]))
+                 y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
+                 ycoord = findgen(n_elements(sub_array[0,*]))
+              
+                 extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+                
+                 for i = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+                     filter = lorentz(ycoord, y[i], 3.0)
+                     extracted_spectrum[i] = total(sub_array[i,*]* $
+                                                   filter/max(filter))
+                 ENDFOR
+              END
+   'FULLAP' : begin
+                 ; Full Aperture Extraction
+                 extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+                 for i = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+                     extracted_spectrum[i] = total(sub_array[i,*])
+                 ENDFOR
+              end
+endcase
+              
 *self.extract=extracted_spectrum
-
 print,'extman'
 help,*self.extract
 end
@@ -243,7 +261,8 @@ end
 pro drip_extman::newdata,data=data,$
                          boxx0=boxx0, boxy0=boxy0,$
                          boxx1=boxx1, boxy1=boxy1,$
-                         boxx2=boxx2, boxy2=boxy2,map=map
+                         boxx2=boxx2, boxy2=boxy2,map=map,$
+                         dapsel_name=dapsel_name
 
 
 print,'SETTING DATA IN EXTMAN'
@@ -255,6 +274,7 @@ if keyword_set(boxy1) then self.boxy1= boxy1
 if keyword_set(boxx2) then self.boxx2=boxx2 else self.boxx2=0
 if keyword_set(boxy2) then self.boxy2=boxy2 else self.boxy2=0
 if keyword_set(map) then *self.map=map
+if keyword_set(dapsel_name) then self.dapsel_name=dapsel_name
 
 end
 ;******************************************************************************

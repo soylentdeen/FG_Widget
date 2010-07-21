@@ -235,12 +235,13 @@ pro drip_anal_extract::extraction,event
 ;check validity of box coordinates
 if (self.boxx0 lt  self.boxx1-2)  then begin
     data=self.disp->getdata(/dataraw)
+    dapname = self.disp->getdata(/dapname)
     sz=size(*data)
     ;check size of data to see if there is any data to plot
     if (sz[0] gt 0) then begin
         self.extman->newdata,boxx0=self.boxu0, boxy0=self.boxv0,$
           boxx1=self.boxu1, boxy1=self.boxv1,boxx2=self.boxx2,$
-          boxy2=self.boxy2, data=data
+          boxy2=self.boxy2, data=data, dapsel_name=dapname
         self.extman->extract
         ext=self.extman->getdata(/extract)
         case self.plot of
