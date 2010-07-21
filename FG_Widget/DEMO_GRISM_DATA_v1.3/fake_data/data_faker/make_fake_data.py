@@ -59,15 +59,15 @@ class Slit( object ):
 plt = Gnuplot.Gnuplot()
 
 PSF_FWHM = 2.0
-slit_x = 2
-slit_y = 256
+slit_x = 2    # X dimension (in pixels)
+slit_y = 256  # Y dimension (in pixels)
 
-n_frames = 8
+n_frames = 2
 
 data_file = 'raw_G1_data.fits'
 
 short_slit = Slit(slit_x, slit_y, PSF_FWHM)
-short_slit.point_source(0.5)
+short_slit.point_source(0.5).object_location
 
 delta = 1.0
 
@@ -90,7 +90,7 @@ x_left = [0]
 y_right = [0]
 y_left = [0]
 spectrum = []
-outfile = 'input_G1_spectrum.txt'
+outfile = 'input_G1_nod_spectrum.txt'
 with open(outfile, 'w') as file:
     file.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
     file.write('\n')
@@ -105,8 +105,8 @@ for order in zip(x_right, x_left, y_right, y_left, m):
         line_strength = numpy.random.rand()
         line_center = numpy.random.rand()*(xstop-xstart)+xstart
         flux *= (1.0-line_strength*numpy.exp(-(xrange-line_center)**2.0/(2.0)))
-    a = Gnuplot.Data(xrange, flux, with_='lines')
-    plt.plot(a)
+    #a = Gnuplot.Data(xrange, flux, with_='lines')
+    #plt.plot(a)
     spectrum.append(flux)
     with open(outfile, 'a') as file:
         for xpt, ypt in zip(xrange, flux):
@@ -119,8 +119,8 @@ for i in numpy.arange(n_frames):
     background = numpy.random.poisson(lam=50, size = [len(y), len(x)])
     Z += background
     
-    #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
-    #pyplot.show()
+    im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
+    pyplot.show()
     for order in zip(x_right, x_left, y_right, y_left, spectrum):
         xstart = order[1]
         xstop = order[0]
@@ -135,7 +135,7 @@ for i in numpy.arange(n_frames):
             ydim = len(subimage)
             mask = scipy.where( (X >= c[0]-(numpy.floor(xdim/2.0))) & (X < c[0]+(numpy.floor(xdim/2.0) + numpy.round(xdim % 2))) & (Y >= c[1]-(numpy.floor(ydim/2.0))) & (Y < c[1]+(numpy.floor(ydim/2.0) + numpy.round(ydim % 2))))
             Z[mask] += subimage.reshape(1, xdim*ydim)[0]
-            #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
+            im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
     full_image.append(Z[show_mask].reshape(256, 256))
 
 #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
@@ -149,12 +149,12 @@ for i in numpy.arange(n_frames):
 print Z.max()
 print Z.min()
 
-a = Gnuplot.Data(x, Z[150], with_='lines')
-b = Gnuplot.Data(y, zip(*Z)[100], with_='lines')
-plt('set logscale y')
-plt('set yrange [1: 2000.0]')
-plt('set xrange [0:255]')
-plt.plot(a, b)
+#a = Gnuplot.Data(x, Z[150], with_='lines')
+#b = Gnuplot.Data(y, zip(*Z)[100], with_='lines')
+#plt('set logscale y')
+#plt('set yrange [1: 2000.0]')
+#plt('set xrange [0:255]')
+#plt.plot(a, b)
 #im = pyplot.imshow(Z, cmap=cm.gray,origin='lower', extent=[0,256,0,256])
 #pyplot.show()
 

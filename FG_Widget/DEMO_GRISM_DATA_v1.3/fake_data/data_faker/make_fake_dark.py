@@ -55,7 +55,7 @@ class Slit( object ):
         return composite
 
 
-n_frames = 8
+n_frames = 2
 
 delta = 1.0
 
