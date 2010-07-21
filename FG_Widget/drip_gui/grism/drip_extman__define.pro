@@ -68,6 +68,7 @@ endcase
 end
 ;******************************************************************************
 ;    Multiple order
+;  Mis-named.  Actually extracts pre-defined regions.
 ;******************************************************************************
 pro drip_extman::multi_order,mode
 
@@ -128,8 +129,7 @@ end
 ;******************************************************************************
 ;     Get Data - Send new sets of data
 ;******************************************************************************
-function drip_extman::getdata,data=data,$
-                    extract=ext,dapsel_name=dapn,$
+function drip_extman::getdata,data=data,extract=ext,dapsel_name=dapn,$
                     wave_num=wave_num, flux_num=flux_num,$
                     orders=orders
 if keyword_set(data) then  return, self.data
@@ -151,21 +151,30 @@ self.boxx1= self.boxu1
 self.boxy1= self.boxv1
 end
 
+;**********************************
+;    LORENTZ - lorentz function
+;**********************************
+function lorentz, x, x_c, gamma
+
+; gamma = half-width at half-maximum
+
+y = fltarr(n_elements(x))
+
+for i = 0, n_elements(x)-1 DO BEGIN
+   y[i] = (gamma/( (x[i]-x_c)^2.0 + gamma^2.0))/3.14159
+ENDFOR
+
+return, y
+
+END
+
+
 ;******************************************************************************
 ;     Extract - Extract from the data
+;   This routine is used solely for extraction of user-defined ROI
 ;******************************************************************************
 pro drip_extman::extract
 
-;;needs work
-;dataman=self.dataman
-;self.dapsel=self.dataman->getdap(dataman.dapsel)
-;dapsel=*self.dapsel
-;*self.data=readfits(dapsel.path+dapsel.file0)
-;if (self.boxx1 eq 0) and (self.boxy1 eq 0) then begin
-;    datasize=size(*self.data)
-;    self.boxx1= datasize(1)-1
-;    self.boxy1= datasize(2)-1
-;endif
 
 ;extract
 data=*self.data
@@ -176,27 +185,56 @@ slope= float(self.boxy2-self.boxy0)/float(self.boxx2-self.boxx0) ;slope
 
 xvalue=round(findgen(self.boxx2-self.boxx0+1) + self.boxx0)
 
-;yvalue=[self.boxy0]
-;for i=1,(self.boxx2-self.boxx0) do begin
-;    yvalue=[yvalue,round((xvalue[i]-self.boxx0)*slope+yvalue[0])]
-;endfor
-
 yvalue=round(slope*(xvalue-self.boxx0))+self.boxy0
 
 print,'xend:',xvalue(n_elements(xvalue)-1),xvalue(0)
 print,'yend:',yvalue(n_elements(yvalue)-1),yvalue(0)
 print,'dy:',dy,self.boxy1,self.boxy2
 
-extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+dy)],2)
-for i= 1,(self.boxx2-self.boxx0) do begin
-    extract=[extract,total(data[xvalue[i],yvalue[i]:(yvalue[i]+dy)],2)]
+sub_array = fltarr(n_elements(xvalue),dy+1)
+
+for i= 0,n_elements(xvalue)-1 do begin
+    sub_array[i,*]=data[xvalue[i],yvalue[i]:(yvalue[i]+dy)]
 endfor
 
-*self.extract=extract
+n_segments = 16
+segment_size = floor(n_elements(sub_array[*,0])/n_segments)
+
+xx = intarr(n_segments)
+yy = intarr(n_segments)
+
+for i = 0,n_segments-1 do begin
+   
+   print, i*segment_size
+   print, (i+1)*segment_size-1
+   piece = sub_array[i*segment_size:(i+1)*segment_size-1,*]
+   collapsed = total(piece,1)
+
+   collapse_fit = gaussfit(findgen(n_elements(collapsed)), collapsed, A)
+   xx[i] = (i+0.5)*segment_size
+   yy[i] = A[1]
+
+endfor
+
+fit_result = POLY_FIT(xx,yy,2)
+x = findgen(n_elements(sub_array[*,0]))
+y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
+
+ycoord = findgen(n_elements(sub_array[0,*]))
+
+extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+
+for i = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+   filter = lorentz(ycoord, y[i], 3.0)
+   extracted_spectrum[i] = total(sub_array[i,*]*filter/max(filter))
+ENDFOR
+
+*self.extract=extracted_spectrum
 
 print,'extman'
 help,*self.extract
 end
+
 
 ;******************************************************************************
 ;     NEWDATA - Sets new sets of data
