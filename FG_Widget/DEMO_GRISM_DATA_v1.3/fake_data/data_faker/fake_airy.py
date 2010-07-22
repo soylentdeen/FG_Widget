@@ -37,8 +37,7 @@ def draw_airy(X, Y, x_c, y_c, wl):
     return image
 
 class Slit( object ):
-    def __init__(self, length, width, PSF_FWHM):
-        self.FWHM = PSF_FWHM
+    def __init__(self, length, width):
         self.length = length
         self.width = width
         if (length > width):
@@ -52,42 +51,43 @@ class Slit( object ):
         self.object_location = -1.0
 
     def point_source(self, position):
+	''' Position along the slit of the point source. '''
         self.object_location = position     # position along slit 0= top, 1 = bottom
 
     def slit_image(self, y_strength):
-        wl = 8e-4
+        wl = 8e-4              # Nominal wavelength for the observation
         x = numpy.arange(0, self.length*self.length_mult+1, 1.0)
         y = numpy.arange(0, self.width*self.width_mult+1, 1.0)
         X, Y = numpy.meshgrid(x, y)
-        #ptsource = mlab.bivariate_normal(X, Y, self.FWHM, self.FWHM, len(x)/2.0+(self.object_location-0.5)*self.length, len(y)/2.0)
+
+        #creates the airy disk for the point source
         ptsource = draw_airy(X, Y, len(x)/2.0+(self.object_location-0.5)*self.length, len(y)/2.0, wl)
 
+        #creates the background by sending photons through each position in the slit
         sky = numpy.zeros([len(y), len(x)])
         for i in numpy.arange(len(x)/2.0-self.length/2.0, len(x)/2.0+self.length/2.0, 1.0):
             for j in numpy.arange(len(y)/2.0-self.width/2.0, len(y)/2.0+self.width/2.0, 1.0):
                 sky += ((numpy.random.randn(1))**2.0)*draw_airy(X, Y, i, j, wl)
-                #sky += ((numpy.random.randn(1))**2.0)*mlab.bivariate_normal(X, Y, self.FWHM, self.FWHM, i, j)
 
-        #ptsource = mlab.bivariate_normal
+	#Adds the background to the point source, returns the composite slit image
         composite = numpy.round(sky) + numpy.round(ptsource*500.0*y_strength)
         return composite
 
 
-plt = Gnuplot.Gnuplot()
+#plt = Gnuplot.Gnuplot()
 
-PSF_FWHM = 2.0
+#Creates the slit object
 slit_x = 2    # X dimension (in pixels)
 slit_y = 256  # Y dimension (in pixels)
+short_slit = Slit(slit_x, slit_y)
 
 n_frames = 2
 
-data_file = 'raw_G1_data.fits'
-
-short_slit = Slit(slit_x, slit_y, PSF_FWHM)
-short_slit.point_source(0.5)
+data_file = 'G1_nod_data.fits'
 
 delta = 1.0
 
+#sets up the image plane
 neg_x = numpy.floor((short_slit.length*short_slit.length_mult+1.0)/2.0)
 pos_x = numpy.floor((short_slit.length*short_slit.length_mult+1.0)/2.0)+numpy.round((short_slit.length*short_slit.length_mult+1.0) % 2)
 neg_y = numpy.floor((short_slit.width*short_slit.width_mult+1.0)/2.0)
@@ -95,53 +95,64 @@ pos_y = numpy.floor((short_slit.width*short_slit.width_mult+1.0)/2.0)+numpy.roun
 x = numpy.arange(-neg_x, 256+pos_x, delta)
 y = numpy.arange(-neg_y, 256+pos_y, delta)
 X, Y = numpy.meshgrid(x, y)
+
+#show_mask is the location in the image plane of the array.
 show_mask = scipy.where( (X >= 0) & (X < 256) & (Y >= 0) & (Y < 256))
 
+#Cross-Dispersed mode
 #x_right = [159, 255, 255, 255, 255, 255, 255, 255]
 #x_left = [0, 0, 0, 0, 0, 0, 0, 0]
 #y_right = [233, 210, 177, 143, 110, 84, 58, 38]
 #y_left = [202, 162, 127, 98, 69, 46, 20, 0]
-m = [0, 1, 2, 3, 4, 5, 6, 7]
+#m = [0, 1, 2, 3, 4, 5, 6, 7]
+
+#Single-order mode
 x_right = [256]
 x_left = [0]
 y_right = [0]
 y_left = [0]
+mode = [1]
+
+#Generates the synthetic spectrum
 spectrum = []
-outfile = 'junk.txt'
-with open(outfile, 'w') as file:
-    file.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
-    file.write('\n')
+outfile = 'g1_nodded.txt'
+file = open(outfile, 'w')
+file.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
+file.write('\n')
+file.close()
+
 for order in zip(x_right, x_left, y_right, y_left, m):
     xstart = order[1]
     xstop = order[0]
     xrange = numpy.arange(xstart, xstop)
     flux = numpy.ones(len(xrange))
-    nlines = numpy.random.randint(0,30)
+    nlines = numpy.random.randint(0,30)  #Number of lines we will generate
     print nlines
     for i in numpy.arange(nlines):
         line_strength = numpy.random.rand()
         line_center = numpy.random.rand()*(xstop-xstart)+xstart
         flux *= (1.0-line_strength*numpy.exp(-(xrange-line_center)**2.0/(2.0)))
-    a = Gnuplot.Data(xrange, flux, with_='lines')
-    plt.plot(a)
+    #a = Gnuplot.Data(xrange, flux, with_='lines')
+    #plt.plot(a)
     spectrum.append(flux)
-    with open(outfile, 'a') as file:
-        for xpt, ypt in zip(xrange, flux):
-            file.write(str(xpt)+', '+str(ypt)+', '+str(order[4])+'\n')
+    file = open(outfile, 'a')
+    for xpt, ypt in zip(xrange, flux):
+        file.write(str(xpt)+', '+str(ypt)+', '+str(order[4])+'\n')
+    file.close()
 
 full_image = []
 
-#Z = numpy.zeros([len(y), len(x)])
-#background = numpy.random.poisson(lam=50, size = [len(y), len(x)])
-#Z += background
-#
-#im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
-#pyplot.show()
+
+#Generates the fake data, one frame at a time.
+
+source_postion[0.25, 0.75]
 
 for i in numpy.arange(n_frames):
-    Z = numpy.zeros([len(y), len(x)])
-    background = numpy.random.poisson(lam=50, size = [len(y), len(x)])
-    Z += background
+    short_slit.point_source(source_position[i])   # Defines the position of the source for this nod
+
+    Z = numpy.zeros([len(y), len(x)])    # Creates a blank data frame
+    read_noise = numpy.random.poisson(lam=50, size = [len(y), len(x)])  #Generates some read noise
+    Z += read_noise                      # Adds the read noise to the frame
     
     #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
     #pyplot.show()
