@@ -62,6 +62,7 @@ pro drip_analman_extract::multi_order,event
 widget_control,event.id,get_value=value
 dispinfocus=self.dispman->getdata(/dispinfocus)
 data=dispinfocus->getdata(/dataraw)
+dapname=dispinfocus->getdata(/dapname)
 if keyword_set(*data) then begin
     self.extman->newdata,data=data
     case value of
@@ -72,7 +73,7 @@ if keyword_set(*data) then begin
         'G5'   :mode=4
         'G6'   :mode=5
     endcase
-    self.extman->multi_order,mode
+    self.extman->multi_order,mode,dapname
     orders=self.extman->getdata(/orders)
     
     xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$

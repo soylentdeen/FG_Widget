@@ -16,7 +16,9 @@
 ;     DISOBJ - display object
 ;     BASEWID - base widget
 ;
-
+; HISTORY;
+; =============================
+; 7/23/10 - Josh Cheng and Casey Deen added nodding extraction mode
 
 pro drip_extman::setmap,mode
 ; mode - grism mode
@@ -88,7 +90,7 @@ END
 ;    Multiple order
 ;  Mis-named.  Actually extracts pre-defined regions.
 ;******************************************************************************
-pro drip_extman::multi_order,mode
+pro drip_extman::multi_order,mode,dapname
 
 common drip_config_info, dripconf
 
@@ -103,7 +105,8 @@ help,orders,*self.orders
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
 
 ; Gets information from the header
-header = self.dataman->getelement(self.dapsel_name,'HEADER')
+print, dapname
+header = self.dataman->getelement(dapname,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
 
