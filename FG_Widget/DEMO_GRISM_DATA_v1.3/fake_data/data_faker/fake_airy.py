@@ -3,7 +3,7 @@ import time
 import numpy.random
 import scipy
 import scipy.special
-import Gnuplot
+#import Gnuplot
 import pyfits
 import matplotlib.cm as cm
 import matplotlib.mlab as mlab
@@ -76,7 +76,7 @@ class Slit( object ):
         return composite
 
 
-plt = Gnuplot.Gnuplot()
+#plt = Gnuplot.Gnuplot()
 
 #Creates the slit object
 slit_x = 2    # X dimension (in pixels)
@@ -85,7 +85,8 @@ short_slit = Slit(slit_x, slit_y)
 
 n_frames = 2
 
-data_file = 'G1xG2_nod_data.fits'
+data_file = 'test.fits'
+#data_file = 'G1xG2_nod_data.fits'
 
 delta = 1.0
 
@@ -117,7 +118,7 @@ m = [0, 1, 2, 3, 4, 5, 6, 7]
 
 #Generates the synthetic spectrum
 spectrum = []
-outfile = 'g1xg2_nodded.txt'
+outfile = 'test.txt'
 file = open(outfile, 'w')
 file.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
 file.write('\n')
@@ -134,8 +135,8 @@ for order in zip(x_right, x_left, y_right, y_left, m):
         line_strength = numpy.random.rand()
         line_center = numpy.random.rand()*(xstop-xstart)+xstart
         flux *= (1.0-line_strength*numpy.exp(-(xrange-line_center)**2.0/(2.0)))
-    a = Gnuplot.Data(xrange, flux, with_='lines')
-    plt.plot(a)
+    #a = Gnuplot.Data(xrange, flux, with_='lines')
+    #plt.plot(a)
     spectrum.append(flux)
     file = open(outfile, 'a')
     for xpt, ypt in zip(xrange, flux):
@@ -156,8 +157,8 @@ for i in numpy.arange(n_frames):
     read_noise = numpy.random.poisson(lam=50, size = [len(y), len(x)])  #Generates some read noise
     Z += read_noise                      # Adds the read noise to the frame
     
-    #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
-    #pyplot.show()
+    im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
+    pyplot.show()
     for order in zip(x_right, x_left, y_right, y_left, spectrum):
         xstart = order[1]
         xstop = order[0]
@@ -175,6 +176,7 @@ for i in numpy.arange(n_frames):
             #colplot = Gnuplot.Data(numpy.arange(256), Z[show_mask].reshape(256,256)[round(c[1])], with_='lines')
             #plt.plot(colplot)
             #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
+            #pyplot.show()
     full_image.append(Z[show_mask].reshape(256, 256))
 
 #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
