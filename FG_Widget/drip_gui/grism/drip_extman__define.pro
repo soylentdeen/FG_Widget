@@ -202,7 +202,7 @@ header = self.dataman->getelement(self.dapsel_name,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
 ;extraction_mode = drip_getpar(dataman->getelement(self.dapsel,'header'),$
-                               'extmode')
+;                               'extmode')
 
 print, size(header)
 print, self.dapsel_name
@@ -227,7 +227,8 @@ case extraction_mode of
                      
                      xx = intarr(n_segments)
                      yy = intarr(n_segments)
-
+                     fit_status = intarr(n_segments)
+                     
                      for i = 0,n_segments-1 do begin
                         print, i*segment_size
                         print, (i+1)*segment_size-1
@@ -236,13 +237,17 @@ case extraction_mode of
                         
                         positive = where(collapsed ge 0)
                         xcoord = findgen(n_elements(collapsed))
-                        collapse_fit = gaussfit(findgen(xcoord[positive],$
-                                                        collapsed[positive], A)
+                        ;Used MPFITPEAK instead of gaussfit.Need to give credit
+                        collapse_fit = mpfitpeak(xcoord[positive],$
+                            collapsed[positive], A, NTERMS=3, STATUS=status)
                         xx[i] = (i+0.5)*segment_size
                         yy[i] = A[1]
+                        fit_status[i] = status
                      endfor
-              
-                     fit_result = POLY_FIT(xx,yy,2)
+
+                     print, fit_status
+                     good_fits = where(fit_status ne 5)
+                     fit_result = POLY_FIT(xx[good_fits],yy[good_fits],2)
                      x = findgen(n_elements(sub_array[*,0]))
                      y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
                      ycoord = findgen(n_elements(sub_array[0,*]))
