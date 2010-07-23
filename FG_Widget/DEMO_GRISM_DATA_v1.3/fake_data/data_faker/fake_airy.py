@@ -29,7 +29,7 @@ def draw_airy(X, Y, x_c, y_c, wl):
     f_length = 15.494/pixel_size # focal length (in pixels)
     d = 2.54/pixel_size # Beam diameter (in pixels)
     r = [((X-x_c)**2+(Y-y_c)**2)**(0.5)] # radius from optical axis (in pixels)
-    bm = scipy.where(r[0] < 20)
+    bm = scipy.where(r[0] < 15)
     x_airy = 3.1415926*(numpy.array(r))/((l*(f_length/d))) # 
     image = numpy.zeros([len(X), len(X[0])])
     for pixel in zip(*bm):
@@ -67,8 +67,8 @@ class Slit( object ):
 
         #creates the background by sending photons through each position in the slit
         sky = numpy.zeros([len(y), len(x)])
-        for i in numpy.arange(len(x)/2.0-self.length/2.0, len(x)/2.0+self.length/2.0, 1.0):
-            for j in numpy.arange(len(y)/2.0-self.width/2.0, len(y)/2.0+self.width/2.0, 1.0):
+        for i in numpy.arange(len(x)/2.0-self.width/2.0, len(x)/2.0+self.width/2.0, 1.0):
+            for j in numpy.arange(len(y)/2.0-self.length/2.0, len(y)/2.0+self.length/2.0, 1.0):
                 sky += ((numpy.random.randn(1))**2.0)*draw_airy(X, Y, i, j, wl)
 
 	    #Adds the background to the point source, returns the composite slit image
