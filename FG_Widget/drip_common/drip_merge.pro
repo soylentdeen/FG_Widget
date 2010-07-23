@@ -170,6 +170,23 @@ switch mode of
         merged=data-shift(data,chopx,chopy)
         break
     end
+    'NAS': begin ; 2 position chop
+        ; get chop distances
+        ;chopdist=float(drip_getpar(header,'CHPAMP'))/plate_scale 
+        ;chopang=float(drip_getpar(header,'CHPANGLE'))
+        ;chopdist=float(chopdist)
+        ;chopang=!pi/180*chopang
+        ;chopx=chopdist*sin(chopang)
+        chopx = 0
+        ;chopy=-chopdist*cos(chopang)
+        chopy = 0
+        ; multiply by 2 due to supersampling in undistort
+        chopx*=resize
+        chopy*=resize
+        ; shift and merge
+        merged=data
+        break
+    end
     'C2N': ; 2 position chop with nod
     'C2ND': ; 2 position chop with nod and dither
     'MAP': begin ; MAPping Mode

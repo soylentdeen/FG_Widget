@@ -29,15 +29,17 @@ def draw_airy(X, Y, x_c, y_c, wl):
     f_length = 15.494/pixel_size # focal length (in pixels)
     d = 2.54/pixel_size # Beam diameter (in pixels)
     r = [((X-x_c)**2+(Y-y_c)**2)**(0.5)] # radius from optical axis (in pixels)
-    bm = scipy.where(r[0] < 15)
+    bm = scipy.where(r[0] < 20)
     x_airy = 3.1415926*(numpy.array(r))/((l*(f_length/d))) # 
     image = numpy.zeros([len(X), len(X[0])])
     for pixel in zip(*bm):
-        image[pixel[0]][pixel[1]] = (2*scipy.special.jv(1, x_airy[0][pixel[0]][pixel[1]])/x_airy[0][pixel[0]][pixel[1]])**2.0
+        image[pixel[0]][pixel[1]] = ((2*scipy.special.jv(1, x_airy[0][pixel[0]][pixel[1]])/x_airy[0][pixel[0]][pixel[1]])**2.0)
+        if numpy.isnan(image[pixel[0]][pixel[1]]):
+            image[pixel[0]][pixel[1]] = 1.0
     return image
 
 class Slit( object ):
-    def __init__(self, length, width):
+    def __init__(self, width, length):
         self.length = length
         self.width = width
         if (length > width):
@@ -56,12 +58,12 @@ class Slit( object ):
 
     def slit_image(self, y_strength):
         wl = 8e-4              # Nominal wavelength for the observation
-        x = numpy.arange(0, self.length*self.length_mult+1, 1.0)
-        y = numpy.arange(0, self.width*self.width_mult+1, 1.0)
+        x = numpy.arange(0, self.width*self.width_mult+1, 1.0)
+        y = numpy.arange(0, self.length*self.length_mult+1, 1.0)
         X, Y = numpy.meshgrid(x, y)
 
         #creates the airy disk for the point source
-        ptsource = draw_airy(X, Y, len(x)/2.0+(self.object_location-0.5)*self.length, len(y)/2.0, wl)
+        ptsource = draw_airy(X, Y, len(x)/2.0, len(y)/2.0+(self.object_location-0.5)*self.length, wl)
 
         #creates the background by sending photons through each position in the slit
         sky = numpy.zeros([len(y), len(x)])
@@ -69,29 +71,29 @@ class Slit( object ):
             for j in numpy.arange(len(y)/2.0-self.width/2.0, len(y)/2.0+self.width/2.0, 1.0):
                 sky += ((numpy.random.randn(1))**2.0)*draw_airy(X, Y, i, j, wl)
 
-	#Adds the background to the point source, returns the composite slit image
-        composite = numpy.round(sky) + numpy.round(ptsource*500.0*y_strength)
+	    #Adds the background to the point source, returns the composite slit image
+        composite = numpy.round(10.0*sky) + numpy.round(ptsource*500.0*y_strength)
         return composite
 
 
-#plt = Gnuplot.Gnuplot()
+plt = Gnuplot.Gnuplot()
 
 #Creates the slit object
 slit_x = 2    # X dimension (in pixels)
-slit_y = 256  # Y dimension (in pixels)
+slit_y = 15   # Y dimension (in pixels)
 short_slit = Slit(slit_x, slit_y)
 
 n_frames = 2
 
-data_file = 'G1_nod_data.fits'
+data_file = 'G1xG2_nod_data.fits'
 
 delta = 1.0
 
 #sets up the image plane
-neg_x = numpy.floor((short_slit.length*short_slit.length_mult+1.0)/2.0)
-pos_x = numpy.floor((short_slit.length*short_slit.length_mult+1.0)/2.0)+numpy.round((short_slit.length*short_slit.length_mult+1.0) % 2)
-neg_y = numpy.floor((short_slit.width*short_slit.width_mult+1.0)/2.0)
-pos_y = numpy.floor((short_slit.width*short_slit.width_mult+1.0)/2.0)+numpy.round((short_slit.width*short_slit.width_mult+1.0) % 2)
+neg_x = numpy.floor((short_slit.width*short_slit.width_mult+1.0)/2.0)
+pos_x = numpy.floor((short_slit.width*short_slit.width_mult+1.0)/2.0)+numpy.round((short_slit.width*short_slit.width_mult+1.0) % 2)
+neg_y = numpy.floor((short_slit.length*short_slit.length_mult+1.0)/2.0)
+pos_y = numpy.floor((short_slit.length*short_slit.length_mult+1.0)/2.0)+numpy.round((short_slit.length*short_slit.length_mult+1.0) % 2)
 x = numpy.arange(-neg_x, 256+pos_x, delta)
 y = numpy.arange(-neg_y, 256+pos_y, delta)
 X, Y = numpy.meshgrid(x, y)
@@ -100,22 +102,22 @@ X, Y = numpy.meshgrid(x, y)
 show_mask = scipy.where( (X >= 0) & (X < 256) & (Y >= 0) & (Y < 256))
 
 #Cross-Dispersed mode
-#x_right = [159, 255, 255, 255, 255, 255, 255, 255]
-#x_left = [0, 0, 0, 0, 0, 0, 0, 0]
-#y_right = [233, 210, 177, 143, 110, 84, 58, 38]
-#y_left = [202, 162, 127, 98, 69, 46, 20, 0]
-#m = [0, 1, 2, 3, 4, 5, 6, 7]
+x_right = [159, 255, 255, 255, 255, 255, 255, 255]
+x_left = [0, 0, 0, 0, 0, 0, 0, 0]
+y_right = [233, 210, 177, 143, 110, 84, 58, 38]
+y_left = [202, 162, 127, 98, 69, 46, 20, 0]
+m = [0, 1, 2, 3, 4, 5, 6, 7]
 
 #Single-order mode
-x_right = [256]
-x_left = [0]
-y_right = [0]
-y_left = [0]
-mode = [1]
+#x_right = [256]
+#x_left = [0]
+#y_right = [0]
+#y_left = [0]
+#m = [1]
 
 #Generates the synthetic spectrum
 spectrum = []
-outfile = 'g1_nodded.txt'
+outfile = 'g1xg2_nodded.txt'
 file = open(outfile, 'w')
 file.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
 file.write('\n')
@@ -132,8 +134,8 @@ for order in zip(x_right, x_left, y_right, y_left, m):
         line_strength = numpy.random.rand()
         line_center = numpy.random.rand()*(xstop-xstart)+xstart
         flux *= (1.0-line_strength*numpy.exp(-(xrange-line_center)**2.0/(2.0)))
-    #a = Gnuplot.Data(xrange, flux, with_='lines')
-    #plt.plot(a)
+    a = Gnuplot.Data(xrange, flux, with_='lines')
+    plt.plot(a)
     spectrum.append(flux)
     file = open(outfile, 'a')
     for xpt, ypt in zip(xrange, flux):
@@ -145,7 +147,7 @@ full_image = []
 
 #Generates the fake data, one frame at a time.
 
-source_postion[0.25, 0.75]
+source_position = [0.25, 0.75]
 
 for i in numpy.arange(n_frames):
     short_slit.point_source(source_position[i])   # Defines the position of the source for this nod
@@ -163,13 +165,15 @@ for i in numpy.arange(n_frames):
         slope = float((order[2] - order[3]))/float((xstop-xstart))
         flux = order[4]
         for xpos, y_strength in zip(xrange, flux):
-            c = [xpos, (order[3]+short_slit.width/2.0)+(xpos-min(xrange))*slope]
-            print c, slope
+            c = [xpos,(order[3]+short_slit.length/2.0)+(xpos-min(xrange))*slope]
+            print c, y_strength
             subimage = short_slit.slit_image(y_strength)
             xdim = len(subimage[0])
             ydim = len(subimage)
             mask = scipy.where( (X >= c[0]-(numpy.floor(xdim/2.0))) & (X < c[0]+(numpy.floor(xdim/2.0) + numpy.round(xdim % 2))) & (Y >= c[1]-(numpy.floor(ydim/2.0))) & (Y < c[1]+(numpy.floor(ydim/2.0) + numpy.round(ydim % 2))))
             Z[mask] += subimage.reshape(1, xdim*ydim)[0]
+            #colplot = Gnuplot.Data(numpy.arange(256), Z[show_mask].reshape(256,256)[round(c[1])], with_='lines')
+            #plt.plot(colplot)
             #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
     full_image.append(Z[show_mask].reshape(256, 256))
 

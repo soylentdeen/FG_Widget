@@ -188,6 +188,10 @@ if keyword_set(lnc) then return, *self.lincor   ;LIN
 if keyword_set(cf) then return, *self.cleanedflats
 if keyword_set(mf) then return, *self.masterflat
 
+print, self.undistorted
+
+print, "Howdy!"
+
 structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
            basehead:*self.basehead, filename:self.filename, $
            pathload:self.pathload, pathsave:self.pathsave, $
@@ -195,7 +199,7 @@ structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
            data:*self.data, cleaned:*self.cleaned, badflags:*self.badflags, $
            linearized:*self.linearized, flatted:*self.flatted, stacked:*self.stacked, $ ;LIN
            undistorted:*self.undistorted, merged:*self.merged, $
-           coadded:*self.coadded,coadded_rot:rot(*self.coadded,90), $  ;coadded_rot:rot(*self.coadded, 90)
+           coadded:*self.coadded,coadded_rot:*self.coadded, $  ;coadded_rot:rot(*self.coadded, 90)
            lastcoadd:*self.lastcoadd, badmap:*self.badmap, darks:*self.darks, $
            cleaneddarks:*self.cleaneddarks, darksum:*self.darksum, flats:*self.flats, $
            lincor:*self.lincor, $ ;LIN

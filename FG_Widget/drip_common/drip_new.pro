@@ -71,6 +71,7 @@ case mode of
     'MAP': pipe=obj_new('map',filelist)
     'STARE': pipe=obj_new('stare',filelist)
     'TEST': pipe=obj_new('test',filelist)
+    'NAS' : pipe=obj_new('nas', filelist)
     else: pipe=obj_new('drip',filelist)
 endcase
 return,pipe
