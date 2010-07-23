@@ -200,7 +200,9 @@ endfor
 
 header = self.dataman->getelement(self.dapsel_name,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
-;extraction_mode = drip_getpar(dataman->getelement(self.dapsel,'header'), 'extmode')
+instrument_mode = drip_getpar(header, 'INSTMODE')
+;extraction_mode = drip_getpar(dataman->getelement(self.dapsel,'header'),$
+                               'extmode')
 
 print, size(header)
 print, self.dapsel_name
@@ -208,36 +210,49 @@ print, 'Extraction mode : ', extraction_mode
 case extraction_mode of
    'OPTIMAL': begin
               ; Optimal Extraction Begins here
-                 n_segments = 16
-                 segment_size = floor(n_elements(sub_array[*,0])/n_segments)
+                  case instrument_mode of
+                      'STARE': begin
+                          c = [1]
+                      END
+                      'NAS': begin
+                          c = [1, -1]
+                      END
+                  endcase
+                  extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+                  ;original = sub_array
+                  for j = 0, n_elements(c)-1 DO BEGIN
+                     n_segments = 16
+                     sub_array *= c[j]
+                     segment_size=floor(n_elements(sub_array[*,0])/n_segments)
+                     
+                     xx = intarr(n_segments)
+                     yy = intarr(n_segments)
+
+                     for i = 0,n_segments-1 do begin
+                        print, i*segment_size
+                        print, (i+1)*segment_size-1
+                        piece = sub_array[i*segment_size:(i+1)*segment_size-1,*]
+                        collapsed = total(piece,1)
+                        
+                        positive = where(collapsed ge 0)
+                        xcoord = findgen(n_elements(collapsed))
+                        collapse_fit = gaussfit(findgen(xcoord[positive],$
+                                                        collapsed[positive], A)
+                        xx[i] = (i+0.5)*segment_size
+                        yy[i] = A[1]
+                     endfor
               
-                 xx = intarr(n_segments)
-                 yy = intarr(n_segments)
-              
-                 for i = 0,n_segments-1 do begin
-                     print, i*segment_size
-                     print, (i+1)*segment_size-1
-                     piece = sub_array[i*segment_size:(i+1)*segment_size-1,*]
-                     collapsed = total(piece,1)
-                  
-                     collapse_fit = gaussfit(findgen(n_elements(collapsed)),$
-                                     collapsed, A)
-                     xx[i] = (i+0.5)*segment_size
-                     yy[i] = A[1]
-                 endfor
-              
-                 fit_result = POLY_FIT(xx,yy,2)
-                 x = findgen(n_elements(sub_array[*,0]))
-                 y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
-                 ycoord = findgen(n_elements(sub_array[0,*]))
-              
-                 extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
-                
-                 for i = 0, n_elements(extracted_spectrum)-1 DO BEGIN
-                     filter = lorentz(ycoord, y[i], 3.0)
-                     extracted_spectrum[i] = total(sub_array[i,*]* $
-                                                   filter/max(filter))
-                 ENDFOR
+                     fit_result = POLY_FIT(xx,yy,2)
+                     x = findgen(n_elements(sub_array[*,0]))
+                     y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
+                     ycoord = findgen(n_elements(sub_array[0,*]))
+                     
+                     for i = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+                        filter = lorentz(ycoord, y[i], 3.0)
+                        extracted_spectrum[i] += total(sub_array[i,*]* $
+                                                       filter/max(filter))
+                     ENDFOR
+                  ENDFOR
               END
    'FULLAP' : begin
                  ; Full Aperture Extraction

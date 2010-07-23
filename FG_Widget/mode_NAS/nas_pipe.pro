@@ -77,7 +77,7 @@ if strtrim(pipe->getdata(/mode),2) ne 'NAS' then $
 pipe->run,filelist
 ;** save data
 pipe->save
-;** write output maifest
+;** write output manifest
 ; make filename
 filename=pipe->getdata(/filename)
 namepos=strpos(filename, '.fit',/reverse_search)
