@@ -66,11 +66,31 @@ case mode of
 endcase
 
 end
+
+;**********************************
+;    LORENTZ - lorentz function
+;**********************************
+function lorentz, x, x_c, gamma
+
+; gamma = half-width at half-maximum
+
+y = fltarr(n_elements(x))
+
+for i = 0, n_elements(x)-1 DO BEGIN
+   y[i] = (gamma/( (x[i]-x_c)^2.0 + gamma^2.0))/3.14159
+ENDFOR
+
+return, y
+
+END
+
 ;******************************************************************************
 ;    Multiple order
 ;  Mis-named.  Actually extracts pre-defined regions.
 ;******************************************************************************
 pro drip_extman::multi_order,mode
+
+common drip_config_info, dripconf
 
 data=*self.data
 self->setmap,mode
@@ -82,6 +102,14 @@ readcol, 'drip_gui/grism/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, 
 help,orders,*self.orders
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
 
+; Gets information from the header
+header = self.dataman->getelement(self.dapsel_name,'HEADER')
+extraction_mode = drip_getpar(header, 'EXTMODE')
+instrument_mode = drip_getpar(header, 'INSTMODE')
+
+print, self.dapsel_name
+print, extraction_mode, instrument_mode
+
 ;  Figures out which grism mode we are in
 case mode of
    0: grmode_txt = 'G1xG2'
@@ -92,12 +120,21 @@ case mode of
    5: grmode_txt = 'G6'
 endcase
 
+case instrument_mode of
+    'STARE': begin
+         c = [1]
+    END
+    'NAS': begin
+         c = [1, -1]
+    END
+endcase
+
+
 avg=0
 for i=0,n_orders-1 do begin
-    ;slope
+    ; calculates the slope
     pos = where( (orders eq (*self.orders)[i]) and (grism_mode eq grmode_txt) )
     print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
-    ;print, lam_high[pos], lam_low[pos]
     slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
     ;xvalues
     xvalue=findgen(map[1,i,1]-map[0,i,1])
@@ -109,21 +146,83 @@ for i=0,n_orders-1 do begin
     C3 = coeff_3[pos]
     wave = C0[0] + C1[0]*xvalue + C2[0]*(xvalue)^2.0 + C3[0]*(xvalue)^3.0
     ;yvalues
-    print, wave
+    ;print, wave
     yvalue=round(slope*(xvalue))+map(0,i)
     ;extracted data
-    height = (*self.ord_height)[i]
-    extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+height)],2)
-    for n= 1,n_elements(xvalue)-1 do begin
-        extract=[extract,total(data[xvalue[n],yvalue[n]:(yvalue[n]+height)],2)]
-    end
-    if (i eq 0) then avg1=mean(extract)   ; Roughly averages spectra to be on the same scale...
-    avg=mean(extract)
+    dy = (*self.ord_height)[i]
+
+    sub_array = fltarr(n_elements(xvalue),dy+1)
+    for k= 0,n_elements(xvalue)-1 do begin
+        sub_array[k,*]=data[xvalue[k],yvalue[k]:(yvalue[k]+dy)]
+    endfor
+
+    case extraction_mode of
+      'OPTIMAL': begin
+                            ; Optimal Extraction Begins here
+                  extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+                  ;original = sub_array
+                  for j = 0, n_elements(c)-1 DO BEGIN
+                     n_segments = 16
+                     sub_array *= c[j]
+                     segment_size=floor(n_elements(sub_array[*,0])/n_segments)
+                     
+                     xx = intarr(n_segments)
+                     yy = intarr(n_segments)
+                     fit_status = intarr(n_segments)
+                     
+                     for k = 0,n_segments-1 do begin
+                        ;print, k*segment_size
+                        ;print, (k+1)*segment_size-1
+                        piece = sub_array[k*segment_size:(k+1)*segment_size-1,*]
+                        collapsed = total(piece,1)
+                        
+                        positive = where(collapsed ge 0)
+                        xcoord = findgen(n_elements(collapsed))
+                        ;Used MPFITPEAK instead of gaussfit.Need to give credit
+                        collapse_fit = mpfitpeak(xcoord[positive],$
+                            collapsed[positive], A, NTERMS=3, STATUS=status)
+                        xx[k] = (k+0.5)*segment_size
+                        yy[k] = A[1]
+                        fit_status[k] = status
+                     endfor
+
+                     ;print, fit_status
+                     good_fits = where(fit_status ne 5)
+                     fit_result = POLY_FIT(xx[good_fits],yy[good_fits],2)
+                     x = findgen(n_elements(sub_array[*,0]))
+                     y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
+                     ycoord = findgen(n_elements(sub_array[0,*]))
+                     
+                     for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+                        filter = lorentz(ycoord, y[k], 3.0)
+                        extracted_spectrum[k] += total(sub_array[k,*]* $
+                                                       filter/max(filter))
+                     ENDFOR
+                  ENDFOR
+              END
+      'FULLAP' : begin
+                 ; Full Aperture Extraction
+                 extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+                 for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+                     extracted_spectrum[k] = total(sub_array[k,*])
+                 ENDFOR
+              end
+    endcase
+
+
+    ;extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+height)],2)
+    ;for n= 1,n_elements(xvalue)-1 do begin
+    ;    extract=[extract,total(data[xvalue[n],yvalue[n]:(yvalue[n]+height)],2)]
+    ;end
+    if (i eq 0) then avg1=mean(extracted_spectrum)   ; Roughly averages spectra to be on the same scale...
+    avg=mean(extracted_spectrum)
     davg=avg-avg1
-    print,avg1,avg,davg
-    extract=extract-davg
+    print,avg
+    print,avg1
+    print,davg
+    extracted_spectrum=extracted_spectrum-davg
     *self.allwave[i]=wave
-    *self.allflux[i]=extract
+    *self.allflux[i]=extracted_spectrum
 endfor
 end
 ;******************************************************************************
@@ -150,24 +249,6 @@ self.boxy0= self.boxv0
 self.boxx1= self.boxu1
 self.boxy1= self.boxv1
 end
-
-;**********************************
-;    LORENTZ - lorentz function
-;**********************************
-function lorentz, x, x_c, gamma
-
-; gamma = half-width at half-maximum
-
-y = fltarr(n_elements(x))
-
-for i = 0, n_elements(x)-1 DO BEGIN
-   y[i] = (gamma/( (x[i]-x_c)^2.0 + gamma^2.0))/3.14159
-ENDFOR
-
-return, y
-
-END
-
 
 ;******************************************************************************
 ;     Extract - Extract from the data
