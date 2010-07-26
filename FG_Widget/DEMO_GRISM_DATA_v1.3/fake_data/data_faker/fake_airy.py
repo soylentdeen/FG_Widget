@@ -85,7 +85,7 @@ short_slit = Slit(slit_x, slit_y)
 
 n_frames = 2
 
-data_file = 'test.fits'
+data_file = raw_input('Enter data file name (e.g. g1xg2_fake_data.fits) :')
 #data_file = 'G1xG2_nod_data.fits'
 
 delta = 1.0
@@ -118,7 +118,7 @@ m = [0, 1, 2, 3, 4, 5, 6, 7]
 
 #Generates the synthetic spectrum
 spectrum = []
-outfile = 'test.txt'
+outfile = raw_input('Enter the name of text file in which to store input spectrum :')
 file = open(outfile, 'w')
 file.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime()))
 file.write('\n')
@@ -157,8 +157,8 @@ for i in numpy.arange(n_frames):
     read_noise = numpy.random.poisson(lam=50, size = [len(y), len(x)])  #Generates some read noise
     Z += read_noise                      # Adds the read noise to the frame
     
-    im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
-    pyplot.show()
+    #im = pyplot.imshow(Z[show_mask].reshape(256, 256), cmap=cm.gray, origin='lower', extent=[0, 256, 0, 256])
+    #pyplot.show()
     for order in zip(x_right, x_left, y_right, y_left, spectrum):
         xstart = order[1]
         xstop = order[0]
@@ -199,51 +199,4 @@ print Z.min()
 #im = pyplot.imshow(Z, cmap=cm.gray,origin='lower', extent=[0,256,0,256])
 #pyplot.show()
 
-print asdf
-
-wl = numpy.linspace(5, 9, 101)
-
-G1 = Grism('G1', 25.0, 6.16, 3.43, 4.9, 7.8)
-G2 = Grism('G2', 87.0, 32.6, 3.43, 4.9, 7.8)
-xdisp_beta = G1.calc_beta(wl, 1.0)
-beta_m14 = G2.calc_beta(wl, 14.0)
-beta_m15 = G2.calc_beta(wl, 15.0)
-beta_m16 = G2.calc_beta(wl, 16.0)
-beta_m17 = G2.calc_beta(wl, 17.0)
-beta_m18 = G2.calc_beta(wl, 18.0)
-beta_m19 = G2.calc_beta(wl, 19.0)
-beta_m20 = G2.calc_beta(wl, 20.0)
-beta_m21 = G2.calc_beta(wl, 21.0)
-beta_m22 = G2.calc_beta(wl, 22.0)
-beta_m23 = G2.calc_beta(wl, 23.0)
-
-focal_length = 1.5748e5 #microns
-xpos = numpy.tan(numpy.radians(xdisp_beta))*focal_length/50.0
-ypos_m14 = numpy.tan(numpy.radians(beta_m14))*focal_length/50.0
-ypos_m15 = numpy.tan(numpy.radians(beta_m15))*focal_length/50.0
-ypos_m16 = numpy.tan(numpy.radians(beta_m16))*focal_length/50.0
-ypos_m17 = numpy.tan(numpy.radians(beta_m17))*focal_length/50.0
-ypos_m18 = numpy.tan(numpy.radians(beta_m18))*focal_length/50.0
-ypos_m19 = numpy.tan(numpy.radians(beta_m19))*focal_length/50.0
-ypos_m20 = numpy.tan(numpy.radians(beta_m20))*focal_length/50.0
-ypos_m21 = numpy.tan(numpy.radians(beta_m21))*focal_length/50.0
-ypos_m22 = numpy.tan(numpy.radians(beta_m22))*focal_length/50.0
-ypos_m23 = numpy.tan(numpy.radians(beta_m23))*focal_length/50.0
-
-m14 = Gnuplot.Data(xpos, ypos_m14, with_='lines')
-m15 = Gnuplot.Data(xpos, ypos_m15, with_='lines')
-m16 = Gnuplot.Data(xpos, ypos_m16, with_='lines')
-m17 = Gnuplot.Data(xpos, ypos_m17, with_='lines')
-m18 = Gnuplot.Data(xpos, ypos_m18, with_='lines')
-m19 = Gnuplot.Data(xpos, ypos_m19, with_='lines')
-m20 = Gnuplot.Data(xpos, ypos_m20, with_='lines')
-m21 = Gnuplot.Data(xpos, ypos_m21, with_='lines')
-m22 = Gnuplot.Data(xpos, ypos_m22, with_='lines')
-m23 = Gnuplot.Data(xpos, ypos_m23, with_='lines')
-
-plt('set xrange [-128:128]')
-plt('set yrange [-128:128]')
-plt('set xlabel "Cross-Dispersion"')
-plt('set ylabel "Dispersion"')
-#plt.plot(m14, m15, m16, m17, m18, m19, m20, m21, m22, m23)
-print asdf
+print "Done!"
