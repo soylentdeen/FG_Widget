@@ -125,6 +125,7 @@ if self.elemn gt 0 then begin
 endif else begin
    image=fltarr(256,256)
    imgtext='none'
+   dapname=''
 endelse
 *self.dataraw=image
 ;** if multiframe select required frame
