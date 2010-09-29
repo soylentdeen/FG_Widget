@@ -64,11 +64,21 @@ else *self.stacked=*self.flatted
 *self.merged=*self.undistorted
 ; coadd
 if self.n gt 0 then begin
-    *self.coadded=drip_coadd(*self.merged,*self.coadded, $
-                             *self.header, *self.basehead)
+    ;*self.coadded=drip_coadd(*self.merged,*self.coadded, $
+    ;                         *self.header, *self.basehead)
+    ; Turn off 2-D coadd, coadd 1-D spectra later
+    *self.coadded=*self.merged
 endif else begin
-    *self.coadded=drip_coadd(*self.merged,*self.coadded, $
-                             *self.header, *self.basehead, /first)
+    ;*self.coadded=drip_coadd(*self.merged,*self.coadded, $
+    ;                        *self.header, *self.basehead, /first)
+    ; Turn off 2-D coadd, coadd 1-D spectra later
+    *self.coadded=*self.merged
+                             
+; Automatically extract the spectrum from the reduced image
+; 
+; Extract preset regions using 'multi_order' and plot spectrum
+
+
 endelse
 ; create README
 ;o=(mode eq 1) ? 'on' : 'off'

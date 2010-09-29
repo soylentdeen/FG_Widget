@@ -1,11 +1,11 @@
 ; NAME:
-;     GUI - Version .6
+;     FG_WIDGET - Version .6
 ;
 ; PURPOSE:
 ;     GUI for running the DRiP.
 ;
 ; CALLING SEQUENCE:
-;     GUI, [XSIZE=XS, YSIZE=YS]
+;     FG_WIDGET, [XSIZE=XS, YSIZE=YS]
 ;
 ; INPUTS:
 ;     XSIZE - X dimension of the display windows
@@ -27,11 +27,10 @@
 ;     CW_DRIP_MW
 ;
 ; SIDE EFFECTS:
-;     still prone to bugs so who knows what may happen.
+;     None identified.
 ;
 ; RESTRICTIONS:
-;     save routines need to be updated.  info window not yet implemented.
-;     memory may run out quickly.  batch processing not fully tested.
+;     save routines need to be updated
 ;
 ; PROCEDURE:
 ;     lay out the widgets, create manager objects, set the gui in motion.

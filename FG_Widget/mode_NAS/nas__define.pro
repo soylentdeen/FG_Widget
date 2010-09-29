@@ -70,7 +70,8 @@
 ;                Renamed to C2N
 ;     Modified:  Marc Berthoud, CU, May 2006
 ;                Used c2n__define.pro to make new mode file c2__define.pro
-;
+;     Modified:  Casey Deen, UT/IC, July 2010
+;                Used c2n__define.pro to creat new grism mode nas__define.pro
 
 ;******************************************************************************
 ;     RUN - Fills SELF structure pointer heap variables with proper values.
@@ -97,12 +98,20 @@ pro nas::reduce
 if self.n gt 0 then begin
     ;*self.coadded=drip_coadd(*self.merged,*self.coadded, $
     ;                         *self.header, *self.basehead)
+    ; Turn off coadding of images, coadd 1-D spectra later
     *self.coadded = *self.stacked
 endif else begin
     ;*self.coadded=drip_coadd(*self.merged,*self.coadded, $
     ;                         *self.header, *self.basehead, /first)
+    ; Turn off coadding of images, coadd 1-D spectra later
     *self.coadded = *self.stacked
 endelse
+
+; Automatically extract the spectrum from the reduced image
+; 
+; Extract preset regions and plot spectrum
+
+
 ; create README
 self.readme=['pipeline: Nod Along Slit', $ ;info lines
   'file: ' + self.filename, $

@@ -100,6 +100,7 @@
 ;                 Added drip::findcal to search for calibration data in the
 ;                 current data directory
 
+
 ;****************************************************************************
 ;     SETDATA - set data values
 ;****************************************************************************
@@ -108,7 +109,7 @@ pro drip::setdata, mode=mo, n=n, readme=rm, $
         pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
         badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
         cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $  ;LIN
-        merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $
+        merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $ ;EXT  , extspec=exs
         badmap=bm, darks=ds, cleanddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
         masterflat=mf, lincor=lnc ;LIN
 
@@ -133,6 +134,7 @@ if keyword_set(ud) then *self.undistorted=ud
 if keyword_set(md) then *self.merged=md
 if keyword_set(coa) then *self.coadded=coa
 if keyword_set(cor) then *self.coadded_rot=cor
+;if keyword_set(exs) then *self.extspec=exs ;EXT
 if keyword_set(lc) then *self.lastcoadd=lc
 if keyword_set(bm) then *self.badmap=bm
 if keyword_set(fs) then *self.darks=ds
@@ -153,7 +155,7 @@ function drip::getdata, mode=mo, n=n, readme=rm, $
              pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
              badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
              cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $ ;LIN
-             merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $
+             merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $ ;EXT  extspec=exs,
              badmap=bm, darks=ds, cleaneddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
              masterflat=mf, lincor=lnc ;LIN
 
@@ -178,6 +180,7 @@ if keyword_set(ud) then return, *self.undistorted
 if keyword_set(md) then return, *self.merged
 if keyword_set(coa) then return, *self.coadded
 if keyword_set(cor) then return, *self.coadded_rot
+;if keyword_set(exs) then return, *self.extspec        ;EXT
 if keyword_set(lc) then return, *self.lastcoadd
 if keyword_set(bm) then return, *self.badmap
 if keyword_set(ds) then return, *self.darks
@@ -188,10 +191,6 @@ if keyword_set(lnc) then return, *self.lincor   ;LIN
 if keyword_set(cf) then return, *self.cleanedflats
 if keyword_set(mf) then return, *self.masterflat
 
-print, self.undistorted
-
-print, "Howdy!"
-
 structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
            basehead:*self.basehead, filename:self.filename, $
            pathload:self.pathload, pathsave:self.pathsave, $
@@ -199,7 +198,7 @@ structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
            data:*self.data, cleaned:*self.cleaned, badflags:*self.badflags, $
            linearized:*self.linearized, flatted:*self.flatted, stacked:*self.stacked, $ ;LIN
            undistorted:*self.undistorted, merged:*self.merged, $
-           coadded:*self.coadded,coadded_rot:*self.coadded, $  ;coadded_rot:rot(*self.coadded, 90)
+           coadded:*self.coadded, coadded_rot:rot(*self.coadded, 90), $ ;extspec:*self.extspec, $;  EXT
            lastcoadd:*self.lastcoadd, badmap:*self.badmap, darks:*self.darks, $
            cleaneddarks:*self.cleaneddarks, darksum:*self.darksum, flats:*self.flats, $
            lincor:*self.lincor, $ ;LIN
@@ -215,7 +214,7 @@ end
 ;******************************************************************************
 
 pro drip::load, filename, masterflat=mf, cleaned=cl, linearized=lnr, flatted=fl, stacked=st, $ ;LIN
-                undistort=ud, merged=md, coadded=coa, coadded_rot=cor
+                undistort=ud, merged=md, coadded=coa, coadded_rot=cor  ;, extspec=exs   ;EXT
 
 ; error check
 s=size(filename)
@@ -262,6 +261,10 @@ endif else if keyword_set(cor) then begin
     fname=self.pathload+strmid(self.filename,0,namepos)+'_coadded_rot.fits'
     data=self.coadded_rot
     head=self.basehead
+;endif else if keyword_set(exs) then begin
+;    fname=self.pathload+strmid(self.filename,0,namepos)+'_extspec.fits'  ; EXT
+;    data=self.extspec
+;    head=self.basehead    
 endif else begin
     fname=self.pathload+strmid(self.filename,0,namepos)+'_reduced.fits'
     data=self.coadded
@@ -276,7 +279,7 @@ end
 ;******************************************************************************
 
 pro drip::save, masterflat=mf, cleaned=cl, linearized=lnr, flatted=fl, stacked=st, $ ;LIN
-                undistort=ud, merged=md, coadded=co, coadded_rot= cor, $
+                undistort=ud, merged=md, coadded=co, coadded_rot=cor, $ ;  EXT    extspec=exs, 
                 filename=filename
 
 ; check if reduced data available
@@ -313,6 +316,9 @@ endif else if keyword_set(co) then begin
 endif else if keyword_set(cor) then begin
     fname=self.pathsave+strmid(self.filename,0,namepos)+'_coadded_rot.fits'
     data=self.coadded_rot
+;endif else if keyword_set(exs) then begin
+;    fname=self.pathsave+strmid(self.filename,0,namepos)+'_extspec.fits'
+;    data=self.extspec
 endif else begin
     fname=self.pathsave+strmid(self.filename,0,namepos)+'_reduced.fits'
     data=self.coadded
@@ -703,6 +709,7 @@ ptr_free, self.undistorted
 ptr_free, self.merged
 ptr_free, self.coadded
 ptr_free, self.coadded_rot
+;ptr_free, self.extspec  ;EXT
 ptr_free, self.lastcoadd
 ptr_free, self.badmap
 ptr_free, self.darks
@@ -740,6 +747,7 @@ self.undistorted=ptr_new(/allocate_heap)
 self.merged=ptr_new(/allocate_heap)
 self.coadded=ptr_new(/allocate_heap)
 self.coadded_rot=ptr_new(/allocate_heap)
+;self.extspec=ptr_new(/allocate_heap) ;EXT
 self.lastcoadd=ptr_new(/allocate_heap)
 self.badmap=ptr_new(/allocate_heap)
 self.darks=ptr_new(/allocate_heap)
@@ -817,7 +825,8 @@ struct={drip, $
         undistorted:ptr_new(), $    ; undistored data
         merged:ptr_new(), $         ; merged data
         coadded:ptr_new(), $        ; coadded data
-        coadded_rot:ptr_new(),$     ; coadded rotated
+        coadded_rot:ptr_new(), $    ; coadded rotated
+ ;       extspec:ptr_new(), $        ; extracted grism spectrum  ;EXT
         lastcoadd:ptr_new(), $      ; previous coadded data
         ; support data varaiables
         badmap:ptr_new(), $         ; map of bad pixels

@@ -292,7 +292,7 @@ tlb=widget_base($;group_leader=leader,$
 
 baseTitle=widget_base(tlb,/column,/align_center)
 title=widget_label(baseTitle,$
-                   value='Multiple Order Mode',$
+                   value='Preset Spectral Extraction',$
                    /align_center,$
                    font=largefont)
 ;check boxes
