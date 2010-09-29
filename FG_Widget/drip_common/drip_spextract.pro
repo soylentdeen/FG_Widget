@@ -31,11 +31,11 @@
 ; DRIP_SPEXTRACT - Pipeline spectral extraction
 ;******************************************************************************
 
-pro drip_spextract, data, header, basehead
+pro drip_spextract::pipe_extract
 ; error check
-sd=size(data)
+;sd=size(data)
 
-multi_order, mode, dapname
+; self.extman->multi_order, mode, dapname
 
 
 drip_message, 'Done with spectral extraction'
@@ -46,8 +46,9 @@ end
 ;     SPEXTRACT__DEFINE - Define the SPEXTRACT class structure.
 ;******************************************************************************
 
-pro spectract__define  ;structure definition
+pro spextract__define  ;structure definition
 
 struct={spextract, $
-      inherits drip_extman} ; child object of drip_extman object
+        extman:obj_new(), $
+        inherits drip_extman} ; child object of drip_extman object
 end
