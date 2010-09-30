@@ -77,7 +77,7 @@ if keyword_set(*data) then begin
     orders=self.extman->getdata(/orders)
     
     xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$
-                               orders=orders,$   ;mw=(self.dispman).mw,
+                               orders=orders,$; mw=(self.dispman).mw,$
                                extman=self.extman,$
                                xsize=640,ysize=480)
     id=widget_info(xplot_multi,/child)

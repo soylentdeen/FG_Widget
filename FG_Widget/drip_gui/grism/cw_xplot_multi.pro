@@ -1,6 +1,29 @@
 ;******************************************************************************
+;     Open
+;******************************************************************************
+
+pro xplot_multi:open
+
+file = dialog_pickfile(/read,/must_exist,$
+                       Dialog_parent=self.xplot_multi_base,$
+                       path=self.prevPath, get_path=prevPath,$
+                       filter='*.fits', /fix_filter)
+
+if keyword_set(file) then BEGIN
+    im=readfits(file, hdr)
+    wave = im[0,*]
+    flux = im[1,*]
+    error = im[2,*]
+    orders = im[3,*]
+
+    n_ord = n_elements(uniq(orders))
+    print, n_order
+END
+
+;******************************************************************************
 ;     Save
 ;******************************************************************************
+
 pro xplot_multi::save
 
 ;print,'Now we save'
@@ -9,22 +32,22 @@ pro xplot_multi::save
 ; check self->draw to see how i get the data to plot it properly
 
 file=dialog_pickfile(/write,$
-                             Dialog_parent=self.xplot_multi_base,$
-                             file='Spectra01',$
-                             path=self.prevPath,$
-                             get_path=prevPath,$
-                             filter='*.fits',/fix_filter)
+                     Dialog_parent=self.xplot_multi_base,$
+                     file='Spectra01',$
+                     path=self.prevPath,$
+                     get_path=prevPath,$
+                     filter='*.fits',/fix_filter)
 
 if keyword_set(file) then begin
     if not(strmatch(file,'*.fits')) then file=file+'.fits'
     
     n=0
-    wave=self.extman->getdata(wave_num=(*self.orders[0]+n))
-    flux=self.extman->getdata(flux_num=(*self.orders[0]+n))
+    wave=self.extman->getdata(wave_num=((*self.orders)[0]+n))
+    flux=self.extman->getdata(flux_num=((*self.orders)[0]+n))
     len=n_elements(wave)
-    orders=intarr(len)+(*self.orders[0]+n)
+    orders=intarr(len)+((*self.orders)[0]+n)
     error= dblarr(len)
-    for i=*self.orders[0],*self.orders[n_elements(*self.orders)]-1 do begin
+    for i=(*self.orders)[0],(*self.orders)[n_elements(*self.orders)-1] do begin
         n=n+1
         wave=[wave, self.extman->getdata(wave_num=i)]
         flux=[flux, self.extman->getdata(flux_num=i)]
@@ -37,7 +60,8 @@ if keyword_set(file) then begin
           transpose(error),$
           transpose(orders)]
     collabels=['wavelength', 'flux', 'flux_error','order']
-    self.mw->print,'Written file '+file
+    ;self.mw->print,'Written file '+file
+    print,'Written file '+file
     sz=size(data)
     wr_spfits,file,data, sz(2), collabels=collabels
 endif
@@ -55,6 +79,9 @@ widget_control, event.id, get_uvalue=uvalue
 case uvalue.uval of
     'plot':begin
         self->draw
+    end
+    'open fits':begin
+        self->open
     end
     'save fits':begin
         self->save
@@ -300,7 +327,11 @@ file=widget_button(mbar,$
                    value='File',$
                    /menu)
 open=widget_button(file,$
-                   value='Open...')
+                   value='Open...'$
+                   event_pro='xplot_multi_eventhand',$
+                   uvalue={object:xplot_multi,$
+                           method::'events',$
+                           uval:'open fits'})
 save=widget_button(file,$
                    value='Save...',$
                    event_pro='xplot_multi_eventhand',$

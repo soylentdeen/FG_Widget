@@ -285,8 +285,6 @@ endfor
 header = self.dataman->getelement(self.dapsel_name,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
-;extraction_mode = drip_getpar(dataman->getelement(self.dapsel,'header'),$
-;                               'extmode')
 
 print, size(header)
 print, self.dapsel_name
@@ -353,8 +351,6 @@ case extraction_mode of
 endcase
               
 *self.extract=extracted_spectrum
-print,'extman'
-help,*self.extract
 end
 
 
