@@ -175,10 +175,14 @@ if not xregistered('self->help') then begin
          ['c - Clear mouse mode.'],$
          ['    Use to clear a zoom, fix, or remove session.'],$
          [' '],$
+         ['f - Manual fit to continuum or spectral feature'],$
+         [' '],$
+         ['h - To lauch the help window.'],$
+         [' '],$
          ['i - To zoom IN in whatever zoom mode the cursor is currently'],$
          ['    in.'],$
          [' '],$
-         ['h - To lauch the help window.'],$
+         ["l - Manual wavelength calibration"],$
          [' '],$
          ['m - To open the control panel.  The plot parameters can then '],$
          ['    be Modified.'],$

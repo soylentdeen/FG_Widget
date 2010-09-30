@@ -1,11 +1,11 @@
 ; NAME:
-;     DRIP_ANALMAN_EXTRACT__DEFINE - Version .7.0
+;     DRIP_EXTMAN__DEFINE - Version .7.0
 ;
 ; PURPOSE:
 ;     Analysis Object Manager for the GUI
 ;
 ; CALLING SEQUENCE:
-;     Obj=Obj_new('DRIP_ANALMAN_EXTRACT', BASEID)
+;     Obj=Obj_new('DRIP_EXTMAN', BASEID)
 ;
 ; INPUTS:
 ;     BASEID - Widget ID of base to put widgets
@@ -88,7 +88,8 @@ END
 
 ;******************************************************************************
 ;    Multiple order
-;  Mis-named.  Actually extracts pre-defined regions.
+;  Mis-named.  Actually extracts pre-defined regions of both x-dispersed and 
+;  single-order spectra.
 ;******************************************************************************
 pro drip_extman::multi_order,mode,dapname
 
@@ -220,9 +221,9 @@ for i=0,n_orders-1 do begin
     if (i eq 0) then avg1=mean(extracted_spectrum)   ; Roughly averages spectra to be on the same scale...
     avg=mean(extracted_spectrum)
     davg=avg-avg1
-    print,avg
-    print,avg1
-    print,davg
+    ;print,avg
+    ;print,avg1
+    ;print,davg
     extracted_spectrum=extracted_spectrum-davg
     *self.allwave[i]=wave
     *self.allflux[i]=extracted_spectrum
@@ -272,9 +273,9 @@ xvalue=round(findgen(self.boxx2-self.boxx0+1) + self.boxx0)
 
 yvalue=round(slope*(xvalue-self.boxx0))+self.boxy0
 
-print,'xend:',xvalue(n_elements(xvalue)-1),xvalue(0)
-print,'yend:',yvalue(n_elements(yvalue)-1),yvalue(0)
-print,'dy:',dy,self.boxy1,self.boxy2
+;print,'xend:',xvalue(n_elements(xvalue)-1),xvalue(0)
+;print,'yend:',yvalue(n_elements(yvalue)-1),yvalue(0)
+;print,'dy:',dy,self.boxy1,self.boxy2
 
 sub_array = fltarr(n_elements(xvalue),dy+1)
 
@@ -286,9 +287,9 @@ header = self.dataman->getelement(self.dapsel_name,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
 
-print, size(header)
-print, self.dapsel_name
-print, 'Extraction mode : ', extraction_mode
+;print, size(header)
+;print, self.dapsel_name
+;print, 'Extraction mode : ', extraction_mode
 case extraction_mode of
    'OPTIMAL': begin
               ; Optimal Extraction Begins here
