@@ -59,6 +59,12 @@ end
 
 pro drip_analman_extract::multi_order,event
 
+;print, 'Event = ', tag_names(event,/STRUCTURE_NAME)
+;for i=0 , n_tags(event)-1 do begin
+;  print,'  ',(tag_names(event))[i],'=',event.(i)
+;endfor
+;print,event
+
 widget_control,event.id,get_value=value
 dispinfocus=self.dispman->getdata(/dispinfocus)
 data=dispinfocus->getdata(/dataraw)

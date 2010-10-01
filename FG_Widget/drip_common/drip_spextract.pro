@@ -31,11 +31,22 @@
 ; DRIP_SPEXTRACT - Pipeline spectral extraction
 ;******************************************************************************
 
-pro drip_spextract::pipe_extract
+pro drip_spextract
 ; error check
 ;sd=size(data)
 
-; self.extman->multi_order, mode, dapname
+; G1    event={         308        222         295           1}
+; event.id = 308, event.top = 222, event.handler=295, event.select=1
+; G1xG2 event={         309        222         295           1}
+; G3    event={         310        222         295           1}
+; G3xG4 event={         311        222         295           1}
+; G5    event={         312        222         295           1}
+; G6    event={         313        222         295           1}
+
+;event={WIDGET_BUTTON, id:308,top:222,handler:295,select:1}
+;multi_order, event
+;value='G1'
+;widget_control,event.id,get_value=value
 
 
 drip_message, 'Done with spectral extraction'
@@ -50,5 +61,5 @@ pro spextract__define  ;structure definition
 
 struct={spextract, $
         extman:obj_new(), $
-        inherits drip_extman} ; child object of drip_extman object
+        inherits drip_analman_extract} ; child object of drip_analman_extract object
 end

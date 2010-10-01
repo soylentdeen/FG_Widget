@@ -74,9 +74,9 @@ endif else begin
     ; Turn off 2-D coadd, coadd 1-D spectra later
     *self.coadded=*self.merged
                              
-; Automatically extract preset regions using 'multi_order' and plot spectrum
+; Automatically extract preset regions using 'drip_extman::multi_order' and plot spectrum
 
-;drip_spextract
+drip_spextract
 
 endelse
 ; create README
