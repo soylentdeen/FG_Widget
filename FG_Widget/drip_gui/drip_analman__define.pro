@@ -48,7 +48,7 @@ pro drip_analman::start, disps
 
 ; make widgets for object
 common gui_os_dependent_values, largefont, smallfont
-label=widget_label(self.topwid, value='Diaplay X Info:', font=largefont)
+label=widget_label(self.topwid, value='Display X Info:', font=largefont)
 ; create a general analysis object for each display
 dispn=size(disps,/n_elements)
 self.analn=dispn

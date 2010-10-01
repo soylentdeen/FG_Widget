@@ -43,7 +43,8 @@ case uvalue.uval of
     'open ascii':begin
        self->openfile,/ascii      
     end
-    'open fits':self.xplot->readfile,/fits
+    'open fits':self->openfile,/fits
+    ;'open fits':self.xplot->readfile,/fits
     'save ascii': self.xplot->writefile,/txt
     'save fits':self.xplot->writefile,/fits
     'save ps':self.xplot->writefile,/ps
@@ -266,18 +267,35 @@ if keyword_set(ascii) then begin
                         Get_Path=prevPath,$
                         Filter='*.*')
    if keyword_set(file) then begin
-      readcol,file,wave,flux
+      readcol,file,wave,flux,error,order
       self.prevPath=prevPath
    endif
    ; create object
    analnew=obj_new('drip_anal_openfile',dispinfocus,self,wid)
    analnew->setdata,owave=wave,oflux=flux,file=file
-endif
+ENDIF else BEGIN
+    if keyword_set(fits) then begin
+        file=dialog_pickfile(/READ, Filter = '*.fits', /fix_filter,$
+                             DIALOG_PARENT=(self.xplot).xzoomplot_base,$
+                             Path=self.prevPath,Get_Path=prevPath)
+        if keyword_set(file) then BEGIN
+            im = readfits(file, hdr)
+            self.prevPath=prevPath
+        ENDIF
+
+        analnew=obj_new('drip_anal_openfile',dispinfocus, self, wid)
+        analnew->setdata,owave=im[0,*],oflux=im[1,*],file=file
+        orders = im[3,uniq(im[3,*])]
+        ;n_orders = n_elements(orders)
+        ;if n_orders gt 1 THEN BEGIN
+        ;    analnew->store_multi_order, orders, im[0,*], im[1,*]
+        ;ENDIF
+    ENDIF
+ENDELSE
 ; find spot in list
 ; ( set analnext to index of first analobj with display id > focid )
 ; ( OR to analobjn if necessary place is last one
 analnext=0
-print,'analn=',self.analn
 if self.analn gt 0 then begin
     ; get first display id of first analobj
     dispi=((*self.anals)[analnext])->getdata(/disp)
