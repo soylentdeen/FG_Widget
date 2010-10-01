@@ -52,7 +52,7 @@
 ;                 Added logfile capability
 ;                 Nirbhik Chitrakar, Ithaca College
 ;                   converted to extract
-;                   logfile removied, 11/2006
+;                   logfile removed, 11/2006
 ;****************************************************************************
 ;     Display - Displays the buffer - doesnt extract
 ;****************************************************************************
@@ -345,6 +345,19 @@ pro drip_anal_openfile::setdata,owave=owave, oflux=oflux, file=file
      self.file=file
   endif
 end
+
+pro drip_anal_openfile::store_multi_order, orders, wave, flux
+
+(*self.extman).orders = orders
+for j = 0, n_orders-1 DO BEGIN
+    bm = where(im[3,*] eq orders[j])
+    (*self.extman).allwave[j] = im[0,bm]
+    (*self.extman).allflux[j] = im[1,bm]
+ENDFOR
+
+
+END
+
 ;****************************************************************************
 ;    GETDATA - to retrive data outside the object
 ;****************************************************************************
@@ -373,6 +386,7 @@ self.analman=analman
 self.extman=analman.extman
 self.mw=(self.extman).mw
 self.xplot=analman.xplot
+self.xplot_multi=analman.xplot_multi
 self.wid=wid
 self.top=0
 self.plot=1
@@ -408,6 +422,7 @@ struct={drip_anal_openfile, $
         $;objects
         extman:obj_new(),$      ;extraction data manager object
         xplot:obj_new(), $      ;extraction display
+        xplot_multi:obj_new(), $ ;extraction display for multi-order data
         mw:obj_new(), $         ;message window
         $; widgets
         topwid:0L, $            ; widget id for top indicator

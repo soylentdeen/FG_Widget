@@ -836,6 +836,7 @@ endcase
 ;  Update cursor position.
 
 if self.cursor then begin
+    idx = 0
     tabinv, *self.fullwave,xy[0],idx
     tabinv,*self.allwave[0],xy[0],idy
     idx = round(idx)

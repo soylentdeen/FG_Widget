@@ -98,11 +98,12 @@ common drip_config_info, dripconf
 data=*self.data
 self->setmap,mode
 map=*self.map
+
 ;readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  ; need to modify to include polynomial fits
 ;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', comment = '#', delimiter=','
 readcol, 'drip_gui/grism/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, Coeff_2, Coeff_3, FORMAT='A,I,F,F,F,F', skipline = 1
 ;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
-help,orders,*self.orders
+
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
 
 ; Gets information from the header
@@ -150,7 +151,6 @@ for i=0,n_orders-1 do begin
     C3 = coeff_3[pos]
     wave = C0[0] + C1[0]*xvalue + C2[0]*(xvalue)^2.0 + C3[0]*(xvalue)^3.0
     ;yvalues
-    ;print, wave
     yvalue=round(slope*(xvalue))+map(0,i)
     ;extracted data
     dy = (*self.ord_height)[i]
@@ -214,16 +214,9 @@ for i=0,n_orders-1 do begin
     endcase
 
 
-    ;extract=total(data[xvalue[0],yvalue[0]:(yvalue[0]+height)],2)
-    ;for n= 1,n_elements(xvalue)-1 do begin
-    ;    extract=[extract,total(data[xvalue[n],yvalue[n]:(yvalue[n]+height)],2)]
-    ;end
     if (i eq 0) then avg1=mean(extracted_spectrum)   ; Roughly averages spectra to be on the same scale...
     avg=mean(extracted_spectrum)
     davg=avg-avg1
-    ;print,avg
-    ;print,avg1
-    ;print,davg
     extracted_spectrum=extracted_spectrum-davg
     *self.allwave[i]=wave
     *self.allflux[i]=extracted_spectrum
@@ -286,8 +279,6 @@ endfor
 header = self.dataman->getelement(self.dapsel_name,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
-;extraction_mode = drip_getpar(dataman->getelement(self.dapsel,'header'),$
-;                               'extmode')
 
 ;print, size(header)
 ;print, self.dapsel_name
@@ -354,8 +345,6 @@ case extraction_mode of
 endcase
               
 *self.extract=extracted_spectrum
-print,'extman'
-help,*self.extract
 end
 
 
