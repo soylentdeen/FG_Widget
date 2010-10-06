@@ -243,6 +243,7 @@ xplot=obj
 
 dataman=obj_new('drip_dataman', mw)
 extman=obj_new('drip_extman',mw,dataman)
+
 ;dispman=obj_new('drip_dispman', disp_objs, mw, dataman,0,ibase)
 dispman=obj_new('drip_dispman', disp_objs, dataman, 0, ibase)  ;midbase
 dropman=obj_new('drip_dropman', dataman, mw)
@@ -276,7 +277,9 @@ analsels=analman_select->getdata(/anals)
 analman_scale->start, disp_objs
 analman_stats->start, dispman
 xplot->start,dispman
-analman_extract->start, dispman, xplot, extman
+
+; analman_extract starts dataman to prepare for auto extracting
+analman_extract->start, dispman, xplot, extman, dataman   
 dropman->start
 menu->start, mbar, disp_sels=analsels
 pipeman->start, mbar, ctrlbase1, disp_sels=analsels

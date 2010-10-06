@@ -2,7 +2,7 @@
 ;     CW_DRIP_XPLOT - Version 0.4
 ;
 ; PURPOSE:
-;     Extraction Plot  Window compount widget
+;     Extraction Plot  Window compound widget
 ;
 ; CALLING SEQUENCE:
 ;     WidgetID = CW_DRIP_XPLOT( TOP, EXT_ID=ID, XSIZE=XS, YSIZE=YS, _EXTRA=EX)

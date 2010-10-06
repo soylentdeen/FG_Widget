@@ -42,7 +42,7 @@
 ;
 
 ;******************************************************************************
-;     RUN - Fills SELF structure pointer heap variables with proper values.
+;     REDUCE - Fills SELF structure pointer heap variables with proper values.
 ;******************************************************************************
 
 pro stare::reduce
@@ -75,8 +75,7 @@ endif else begin
     *self.coadded=*self.merged
                              
 ; Automatically extract preset regions using 'drip_extman::multi_order' and plot spectrum
-
-drip_spextract
+; drip_spextract
 
 endelse
 ; create README
@@ -88,7 +87,7 @@ self.readme=['pipeline: Stare Mode ' + o + ' chip DRiP', $ ;info lines
   'order: CLEAN, FLAT, STACK, COADD', $
   'notes: badmap from CLEAN, masterflat from FLAT']
 
-print,'Stare Mode FINISHED',self.n ;info
+; print,'Stare Mode FINISHED',self.n ;info
 end
 
 ;******************************************************************************

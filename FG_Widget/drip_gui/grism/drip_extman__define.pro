@@ -107,13 +107,13 @@ readcol, 'drip_gui/grism/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, 
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
 
 ; Gets information from the header
-print, dapname
+; print, dapname
 header = self.dataman->getelement(dapname,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
 
-print, self.dapsel_name
-print, extraction_mode, instrument_mode
+; print, self.dapsel_name
+; print, extraction_mode, instrument_mode
 
 ;  Figures out which grism mode we are in
 case mode of
