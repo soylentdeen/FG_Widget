@@ -564,18 +564,20 @@ if (total(*data) ne 0.0) then begin   ; Allows a pipeline reset without initiati
             'G5'   :mode=4
             'G6'   :mode=5
         endcase
-        self.extman->multi_order,mode,dapname
+        self.extman->predefined_extraction,mode,dapname
         orders=self.extman->getdata(/orders)
     
-        xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$
-                               orders=orders,$; mw=(self.dispman).mw,$
-                               extman=self.extman,$
-                               xsize=640,ysize=480)
-        id=widget_info(xplot_multi,/child)
-        widget_control,id,get_uvalue=obj
-        self.xplot_multi=obj
-        self.xplot_multi->start,self
-        self.xplot_multi->draw,/all
+        self.xplot->add_checkboxes, orders=orders
+        self.xplot->draw_multi, orders=orders, /all, extobj=self.extman
+        ;xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$
+        ;                       orders=orders,$; mw=(self.dispman).mw,$
+        ;                       extman=self.extman,$
+        ;                       xsize=640,ysize=480)
+        ;id=widget_info(xplot_multi,/child)
+        ;widget_control,id,get_uvalue=obj
+        ;self.xplot_multi=obj
+        ;self.xplot_multi->start,self
+        ;self.xplot_multi->draw,/all
     endif
 endif
 
