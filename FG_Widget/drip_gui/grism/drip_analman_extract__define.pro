@@ -55,10 +55,10 @@ endcase
 end
 
 ;****************************************************************************
-;     Extract_multi: extract multiple orders
+;     Predefined_extraction: extract multiple orders
 ;****************************************************************************
 
-pro drip_analman_extract::multi_order,event
+pro drip_analman_extract::predefined_extraction,event
 
 widget_control,event.id,get_value=value
 dispinfocus=self.dispman->getdata(/dispinfocus)
@@ -74,20 +74,22 @@ if keyword_set(*data) then begin
         'G5'   :mode=4
         'G6'   :mode=5
     endcase
-    self.extman->multi_order,mode,dapname
+    self.extman->predefined_extraction,mode,dapname
     orders=self.extman->getdata(/orders)
     
-    xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$
-                               orders=orders,$; mw=(self.dispman).mw,$
-                               extman=self.extman,$
-                               xsize=640,ysize=480)
-    id=widget_info(xplot_multi,/child)
-    widget_control,id,get_uvalue=obj
-    self.xplot_multi=obj
-    
-    self.xplot_multi->start,self
-    
-    self.xplot_multi->draw,/all
+    self.xplot->add_checkboxes, orders=orders
+    self.xplot->draw_multi, orders=orders, /all, extobj=self.extman
+    ;xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$
+    ;                           orders=orders,$; mw=(self.dispman).mw,$
+    ;                           extman=self.extman,$
+    ;                           xsize=640,ysize=480)
+    ;id=widget_info(xplot_multi,/child)
+    ;widget_control,id,get_uvalue=obj
+    ;self.xplot_multi=obj
+    ; 
+    ;self.xplot_multi->start,self
+    ;
+    ;self.xplot_multi->draw,/all
 endif
 
 end
@@ -95,7 +97,9 @@ end
 ;****************************************************************************
 ;     Extract - extraction of all selected anal obj
 ;****************************************************************************
-pro drip_analman_extract::extract,event
+pro drip_analman_extract::user_defined_extraction,event
+
+  ;self.xplot->add_checkboxes, orders = indgen(5)
                                 ;if there are any analobjs
   plot=0
   plotanals=objarr(20)
@@ -552,19 +556,19 @@ saveps=widget_button(save, value='PostScript...',$
 ;extract buttons
 ext=widget_button(headwid,value='Extract',/menu)
 ext2=widget_button(ext, value='Extract Selected Region', $
-                          uvalue={object:self, method:'extract'} )
+                          uvalue={object:self, method:'user_defined_extraction'} )
 g1=widget_button(ext, value='G1',$
-                         uvalue={object:self, method:'multi_order'})
+                         uvalue={object:self, method:'predefined_extraction'})
 g1xg2=widget_button(ext, value='G1xG2',$
-                         uvalue={object:self, method:'multi_order'})
+                         uvalue={object:self, method:'predefined_extraction'})
 g3=widget_button(ext, value='G3',$
-                         uvalue={object:self, method:'multi_order'})
+                         uvalue={object:self, method:'predefined_extraction'})
 g3xg4=widget_button(ext, value='G3xG4',$
-                         uvalue={object:self, method:'multi_order'})
+                         uvalue={object:self, method:'predefined_extraction'})
 g5=widget_button(ext, value='G5',$
-                         uvalue={object:self, method:'multi_order'})
+                         uvalue={object:self, method:'predefined_extraction'})
 g6=widget_button(ext, value='G6',$
-                         uvalue={object:self, method:'multi_order'})
+                         uvalue={object:self, method:'predefined_extraction'})
 ;-- table
 table=widget_base(self.topwid, /row)
 ; label
@@ -623,7 +627,6 @@ struct={drip_analman_extract, $
                         ; ( array of records, first entry is column widetID )
         dispman:obj_new(), $     ; reference to dispman
         xplot:obj_new(), $       ; reference to xplot
-        xplot_multi:obj_new(),$  ; cross-dispersed multiple order mode
         extman:obj_new(), $      ; extraction dataman
         prevPath:'',$            ;previous location where saved
         inherits drip_analman}   ; child object of drip_analman

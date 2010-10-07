@@ -2,7 +2,7 @@
 ;     CW_DRIP_XPLOT - Version 0.4
 ;
 ; PURPOSE:
-;     Extraction Plot  Window compount widget
+;     Extraction Plot  Window compound widget
 ;
 ; CALLING SEQUENCE:
 ;     WidgetID = CW_DRIP_XPLOT( TOP, EXT_ID=ID, XSIZE=XS, YSIZE=YS, _EXTRA=EX)
@@ -577,6 +577,38 @@ self->setminmax
 
 end
 
+;******************************************************************************
+;    CHECKBOX EVENTS
+;******************************************************************************
+pro drip_xplot::checkbox_events,event
+
+widget_control,event.id,get_uvalue=uvalue
+if (uvalue.uval eq 'all') then begin
+    for i=0,self.checkn-1 do begin
+        (*self.chk_status)[i]=event.select
+        widget_control,(*self.checkbox)[i],set_button=event.select
+    endfor
+endif else begin
+    widget_control,(*self.checkbox)[0],set_button=0
+    ;self.chk_status(0)=0
+    (*self.chk_status)[fix(uvalue.uval)+1]=event.select
+endelse
+
+selected=0
+for i=1,self.checkn-1 do begin
+    if ((*self.chk_status)[i] eq 1) then begin
+        selected=[selected,max(*self.orders)-i+1]
+    endif
+endfor
+
+if keyword_set(selected) then begin
+    *self.selected=selected[1:*];+(*self.orders)[0]
+endif
+
+end
+
+
+
 ;************************************************************************
 ;     PLOTWIN_EVENT
 ;************************************************************************
@@ -988,6 +1020,8 @@ end
 ;******************************************************************************
 pro drip_xplot::setdata, buffer=buffer,$
               plotwin_wid=plotwin_wid, pltwin=plotwin, $
+              check_base=check_base, $
+              checkbox=checkbox, orders=orders,$
               pixmap_wid=pixmap, $
               xmin_fld=xmin_fld, xmax_fld=xmax_fld, $
               ymin_fld=ymin_fld, ymax_fld=ymax_fld, $
@@ -997,8 +1031,8 @@ pro drip_xplot::setdata, buffer=buffer,$
               linecolor=linecolor, oplotn=oplotn, no_oplotn=no_oplotn, $
               xtitle=xtitle,ytitle=ytitle,title=title,cursormode=cursormode,$
               plotabsxrange=plotabsxrange,plotxrange=plotxrange,$
-              reg=reg,mw=mw,$
-              tempflux=tempflux,tempwave=tempwave
+              reg=reg,mw=mw,tempflux=tempflux,tempwave=tempwave,$
+              extman=extman
 
 
 
@@ -1007,6 +1041,13 @@ if keyword_set(reg) then self.reg=reg
 if keyword_set(plotwin_wid) then self.plotwin_wid=plotwin_wid
 if keyword_set(plotwin) then self.plotwin=plotwin
 if keyword_set(pixmap_wid)  then self.pixmap=pixmap
+if keyword_set(check_base) THEN self.check_base=[check_base,0L,0L]
+if keyword_set(checkbox) THEN *self.checkbox=checkbox
+if keyword_set(orders) THEN BEGIN
+    *self.orders=orders
+    self.checkn = n_elements(orders)+1
+    *self.chk_status=lonarr(self.checkn)+1
+ENDIF
 if keyword_set(xmin_fld) then self.xmin_fld= xmin_fld
 if keyword_set(xmax_fld) then self.xmax_fld=xmax_fld
 if keyword_set(ymin_fld) then self.ymin_fld=ymin_fld
@@ -1100,10 +1141,54 @@ endelse
 end
 
 ;******************************************************************************
+;     DRAW_MULTI
+;******************************************************************************
+
+pro drip_xplot::draw_multi, orders=orders, all = all, extobj = extobj
+
+orders=*self.orders
+if keyword_set(all) THEN BEGIN
+
+    *self.selected=orders
+    for i = 0, self.checkn-1 DO BEGIN
+        widget_control, (*self.checkbox)[i],set_button=1
+    ENDFOR
+ENDIF
+
+selected = *self.selected
+colors = *self.colors
+nc=n_elements(colors)
+
+self->setdata, /no_oplotn
+n_color = selected[0]-min(orders)
+linecolor=colors[0,n_color]+256L*(colors[1,n_color]+256*colors[2,n_color])
+self->setdata,linecolor=linecolor
+
+wave=extobj->getdata(wave_num=selected[0])
+flux=extobj->getdata(flux_num=selected[0])
+self->draw, wave, flux
+
+for i = 1, n_elements(selected)-1 DO BEGIN
+    self->setdata, /oplotn
+    n=selected[i]-min(orders)
+    linecolor=colors[0,(n mod nc)]$
+        +256L*(colors[1,(n mod nc)]$
+        +256L*colors[2,(n mod nc)])
+    self->setdata,linecolor=linecolor
+    wave=extobj->getdata(wave_num=selected(i))
+    flux=extobj->getdata(flux_num=selected(i))
+    self->draw,wave,flux,/oplot
+ENDFOR
+self->setdata,xtitle='Wavelength (!7l!Xm)'
+self->plotspec
+
+end
+
+;******************************************************************************
 ;     DRAW
 ;******************************************************************************
 
-pro drip_xplot::draw,opixel,oflux,OPLOT=oplot, analobj= anal
+pro drip_xplot::draw,opixel,oflux,OPLOT=oplot,analobj=anal
 
   device,decomposed=1
   
@@ -1211,6 +1296,42 @@ self.cf_obj=obj_new('drip_xplot_clickfit',self)
 
 end
 
+;**********************************************************
+;     add_checkboxes
+;**********************************************************
+
+pro drip_xplot::add_checkboxes, orders=orders
+
+if keyword_set(orders) THEN BEGIN
+    if (self.check_base[1] ne 0) THEN $
+        widget_control,self.check_base[1],/destroy
+    orderLabel=widget_label(self.check_base[0],$
+        value='Select Orders',/align_center)
+    self.check_base[1] = orderLabel ; register the label
+
+    if (self.check_base[2] ne 0) THEN $
+        widget_control,self.check_base[2],/destroy
+    chck_base=widget_base(self.check_base[0],/row,/nonexclusive)
+    checkbox = lonarr(n_elements(orders)+1)
+    checkbox[0] = widget_button(chck_base, value='all',$
+       event_pro='drip_xplot_eventhand', uvalue={object:self,$
+                                                 method:'checkbox_events',$
+                                                 uval:'all'})
+    for i = 1, n_elements(orders) DO BEGIN
+        checkbox[i]=widget_button(chck_base,$
+            value=strcompress(string(max(orders)-(i-1))),$
+            event_pro='drip_xplot_eventhand',uvalue={object:self,$
+                               method:'checkbox_events',$
+                               uval:strcompress(string(i))})
+    ENDFOR
+
+    self.check_base[2] = chck_base     ; register the checkbox base
+
+    self->setdata,checkbox=checkbox,orders=orders
+ENDIF
+
+END
+
 ;******************************************************************************
 ;     INIT
 ;******************************************************************************
@@ -1227,6 +1348,16 @@ self.fullwave=ptr_new(/allocate_heap)
 self.fullpixel=ptr_new(/allocate_heap)
 self.tempflux=ptr_new(/allocate_heap)
 self.tempwave=ptr_new(/allocate_heap)
+self.checkbox=ptr_new(/allocate_heap)
+self.orders=ptr_new(/allocate_heap)
+self.chk_status=ptr_new(/allocate_heap)
+self.selected=ptr_new(/allocate_heap)
+self.colors=ptr_new(/allocate_heap)
+*self.colors=[[255,0,0],[255,255,0],[255,0,255],$
+   [0,255,0],[0,255,255],$
+   [0,0,255],$
+   [255,255,255], [150, 150, 0]]
+
 
 ;properties
 self.charsize=1.0
@@ -1260,6 +1391,7 @@ struct={drip_xplot, $
         plotwin:0,$             ;widget id for the draw widget
         pixmap_wid:0L,$         ;widget id for the pixmap
         plotwin_wid:0L,$        ;widget id for plot window
+        check_base:[0L,0L,0L],$ ;widget ids for [check box base, check box label, chkbx base]
         speccolor_dl:0,$        ;widget id and value for speccolor field
         thick_fld:[0L,0L],$     ;widget id and value for thickness field
         title_fld:[0L,0L],$     ;widget id and value for title field
@@ -1278,6 +1410,12 @@ struct={drip_xplot, $
         allflux:ptrarr(20),$    ;all y data
         allwave:ptrarr(20),$    ;all x data in wavelengths (initially pixels)
         allpixel:ptrarr(20),$   ;all x data in pixels
+        checkbox:ptr_new(),$    ;id for checkboxes
+        checkn:0,$              ;number of checkboxes
+        chk_status:ptr_new(),$  ;status of checkboxes
+        orders:ptr_new(),$      ;available orders
+        selected:ptr_new(),$    ;orders that are selected
+        colors:ptr_new(),$      ;color bank
         fullpixel:ptr_new(),$   ;single array of pixels
         fullwave:ptr_new(),$    ;single array of wavelengths
         tempflux:ptr_new(),$    ;temp y data pointer
@@ -1330,7 +1468,7 @@ Call_Method, cmd.method, cmd.object, event
 end
 
 
-function cw_drip_xplot, top, xsize=xs, ysize=ys, ext_id=id,_extra=ex,mw=mw
+function cw_drip_xplot, top, xsize=xs, ysize=ys, ext_id=id,_extra=ex,mw=mw, orders=orders
 
 obj= obj_new('drip_xplot') ;associated object
 help,obj
@@ -1358,7 +1496,7 @@ message = widget_text (tlb, $
 col_base = widget_base (tlb, $
                         /column, $
                         /align_center)
-
+check_base = widget_base (tlb, /column, /align_center)
 plotwin = widget_draw (col_base, $
                        xsize=xs, $
                        ysize=ys, $
@@ -1435,14 +1573,13 @@ buffer[1]= widget_geom.ysize-ys
 
 obj-> setdata, buffer=buffer,$
   plotwin_wid=plotwin_wid, pltwin=plotwin, $
+  check_base=check_base, $
   xmin_fld=xmin_fld, xmax_fld=xmax_fld, $
   ymin_fld=ymin_fld, ymax_fld=ymax_fld, $
   message=message, keyboard=keyboard, $
   xzoomplot_base=tlb, plotsize=plotsize,mw=mw
 
 widget_control,base1,set_uvalue=obj
-
-
 
 return, tlb
 end

@@ -242,7 +242,7 @@ if (self.boxx0 lt  self.boxx1-2)  then begin
         self.extman->newdata,boxx0=self.boxu0, boxy0=self.boxv0,$
           boxx1=self.boxu1, boxy1=self.boxv1,boxx2=self.boxx2,$
           boxy2=self.boxy2, data=data, dapsel_name=dapname
-        self.extman->extract
+        self.extman->user_defined_extraction
         ext=self.extman->getdata(/extract)
         case self.plot of
             1: begin ;case set as primary or 'P'
@@ -272,7 +272,7 @@ if (self.boxx0 lt  self.boxx1-2)  then begin
         self.mw->print,'No Data to extract'
     endelse
 endif else begin
-    self.mw->print,'Box has to be atleast 2 pixels wide'
+    self.mw->print,'Box has to be at least 2 pixels wide'
 endelse
 
 end
@@ -775,166 +775,6 @@ if change ne 0 then begin
 endif else return, 0
 end
 
-
-;****************************************************************************
-;     SETUP - makes columns for data display
-;             !!! needs to be called at start !!!
-;****************************************************************************
-
-;; function drip_anal_extract::setup, upwid
-
-;; ;** make widgets
-;; common gui_os_dependent_values, largefont, smallfont
-;; ; header (with logall)
-;; basewid=widget_base(upwid, /column, /frame)
-;; headwid=widget_base(basewid,/row,/align_left)
-;; title=widget_label(headwid, value='Extract:', font=largefont)
-;; newbutton=widget_button(headwid, value='New Box')
-;; extbutton=widget_button(headwid, value='Extract')
-;; multi=widget_button(headwid, value='Multi-Order')
-
-;; ;read in buttons
-;; readbutton=widget_button(headwid, value='Read',/menu)
-;; ;widget_control,readbutton,sensitive=0
-;; readasc=widget_button(readbutton, value='ASCII...',$
-;;                       uvalue={object:self.xplot,$
-;;                               method:'rwevent', uval:'read ascii'},$
-;;                       event_pro='drip_anal_extract_eventhand')
-;; readfits=widget_button(readbutton, value='FITS...',$
-;;                       uvalue={object:self.xplot,$
-;;                               method:'rwevent', uval:'read fits'},$
-;;                       event_pro='drip_anal_extract_eventhand')
-;; ;save buttons
-;; savebutton=widget_button(headwid, value='Save',/menu)
-;; saveasc=widget_button(savebutton, value='ASCII...',$
-;;                       uvalue={object:self.xplot,$
-;;                               method:'rwevent', uval:'save ascii'},$
-;;                       event_pro='drip_anal_extract_eventhand')
-;; savefits=widget_button(savebutton, value='FITS...',$
-;;                       uvalue={object:self.xplot, $
-;;                               method:'rwevent', uval:'save fits'},$
-;;                       event_pro='drip_anal_extract_eventhand')
-;; saveps=widget_button(savebutton, value='PostScript...',$
-;;                       uvalue={object:self.xplot, $
-;;                               method:'rwevent', uval:'save ps'},$
-;;                       event_pro='drip_anal_extract_eventhand')
-
-;; ;-- table
-;; table=widget_base(basewid, /row)
-;; ; label
-;; label=widget_base(table, /column)
-;; labellabel=widget_label(label, value='Box#')
-;; ; show
-;; show=widget_base(table, /column)
-;; showlabel=widget_label(show, value='Show')
-;; ; top
-;; top=widget_base(table, /column)
-;; toplabel=widget_label(top, value='Top')
-;; ;plot
-;; plot=widget_base(table, /column)
-;; plotlabel=widget_label(plot, value='Plot')
-;; ; close
-;; close=widget_base(table, /column)
-;; closelabel=widget_label(close, value='Close')
-;; ; color
-;; color=widget_base(table, /column)
-;; colorlabel=widget_label(color, value='Color')
-;; ;display
-;; display=widget_base(table,/column)
-;; displaylabel=widget_label(display,value='Display')
-;; ;coordinate
-;; coord=widget_base(table,/column)
-;; coordLabel=widget_label(coord,value='Coordinates')
-
-;; ;** create structure and fill in
-;; widlist={drip_anal_extract_wids, label:label, show:show, top:top, plot:plot, $
-;;          close:close, color:color,display:display,coord:coord, obj:self, $
-;;          ext:{drip_anal_extract_wids_ext, new:newbutton, extract:extbutton,$
-;;               multi:multi,readasc:readasc,readfits:readfits,$
-;;               saveasc:saveasc,savefits:savefits,saveps:saveps} }
-;; wids=ptr_new(/allocate_heap)
-;; wids=[widlist]
-;; return,wids
-;; end
-
-;****************************************************************************
-;     SETALLWID - gives widgets to analobjs
-;     Comment: analobjs must be objects of right type only!
-;****************************************************************************
-
-;; pro drip_anal_extract::setallwid, analobjs, wids
-
-;; ;** go through list of widgets: check, assign wigets (ev. create new ones)
-;; ; set variables
-;; id=65 ; identifer of display of last analysis object
-;; objcnt=0 ; count how many objects for this display
-;; widn=(size(*wids))[1] ; number of widget entries (highest valid is widn-1)
-;; widi=1 ; index of next valid widget entry (get new widgets if > widn-1)
-;; colwids=(*wids)[0]
-;; ;print,'SETALLWID: widn=',widn
-;; objn=(size(analobjs))[1]-1 ; number of analobjs (valid are 1..objn)
-;; ; go through list
-;; for obji=1,objn do begin
-;;     ; if object in focus or shown
-;;     if analobjs[obji]->isfocus() or analobjs[obji]->isshow() then begin
-;;         ; create widgets if necessary
-;;         ;print,'  widi=',widi
-;;         if widi ge widn then begin
-;;             ; get largefont
-;;             common gui_os_dependent_values, largefont, smallfont
-;;             ; make new structure
-;;             newwids={drip_anal_extract_wids}
-;;             ; make new widgets
-;;             newwids.label=widget_label(colwids.label,value='A-1', $
-;;                                        font=largefont, ysize=25)
-;;             newwids.show=widget_button(colwids.show, value=' ', ysize=25)
-;;             newwids.top=widget_button(colwids.top, value=' ', ysize=25)
-;;             newwids.plot=widget_button(colwids.plot, value='P', ysize=25)
-;;             newwids.close=widget_button(colwids.close, value='Cls', ysize=25)
-;;             newwids.color=cw_color_sel(colwids.color, [0b,0b,0b], $
-;;                                        xsize=32, ysize=19)
-;;             newwids.display=widget_button(colwids.display, value='Display')
-;;             newwids.coord=widget_button(colwids.coord, value='Coordinates')
-;;             ; append them to wids
-;;             *wids=[*wids,newwids]
-;;             ;print,'  Creating new widget label=',newwids.label
-;;         endif
-;;         ; check if still same display
-;;         newid=(analobjs[obji]).disp->getdata(/disp_id)
-;;         ;print,'  newid=',newid
-;;         if id ne newid then begin
-;;             id=newid
-;;             objcnt=1
-;;         endif else objcnt=objcnt+1
-;;         ; make title
-;;         title=string(string(byte(id)),objcnt,format='(A,"-",I1)')
-;;         ; pass widgets to object
-;;         analobjs[obji]->setwid, title, (*wids)[widi]
-;;         ; increase widi
-;;         widi=widi+1
-;;     endif
-;; endfor
-;; ;** kill leftover widgets
-;; ;print,'  widget sets needed=',widi
-;; if widi lt widn then begin
-;;     ; kill widgets
-;;     while widi lt widn do begin
-;;         ;print,'  killing widget ',widn-1
-;;         oldwids=(*wids)[widn-1]
-;;         widget_control, oldwids.label, /destroy
-;;         widget_control, oldwids.show, /destroy
-;;         widget_control, oldwids.top, /destroy
-;;         widget_control, oldwids.plot, /destroy
-;;         widget_control, oldwids.close, /destroy
-;;         widget_control, oldwids.color, /destroy
-;;         widget_control, oldwids.display,/destroy
-;;         widget_control, oldwids.coord, /destroy
-;;         widn=widn-1
-;;     end
-;;     ; shorten wids
-;;     *wids=(*wids)[0:widn-1]
-;; endif
-;; end
 
 ;****************************************************************************
 ;     SETWID - set widgets for interaction

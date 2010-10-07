@@ -87,11 +87,9 @@ return, y
 END
 
 ;******************************************************************************
-;    Multiple order
-;  Mis-named.  Actually extracts pre-defined regions of both x-dispersed and 
-;  single-order spectra.
+;   Pre-defined extraction 
 ;******************************************************************************
-pro drip_extman::multi_order,mode,dapname
+pro drip_extman::predefined_extraction,mode,dapname
 
 common drip_config_info, dripconf
 
@@ -251,7 +249,7 @@ end
 ;     Extract - Extract from the data
 ;   This routine is used solely for extraction of user-defined ROI
 ;******************************************************************************
-pro drip_extman::extract
+pro drip_extman::user_defined_extraction
 
 common drip_config_info, dripconf
 

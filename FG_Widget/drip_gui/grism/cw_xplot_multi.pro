@@ -4,23 +4,8 @@
 
 pro xplot_multi::open
 
-file = dialog_pickfile(/read,/must_exist,$
-                       Dialog_parent=self.xplot_multi_base,$
-                       path=self.prevPath, get_path=prevPath,$
-                       filter='*.fits', /fix_filter)
-
-if keyword_set(file) then BEGIN
-    im=readfits(file, hdr)
-    wave = im[0,*]
-    flux = im[1,*]
-    error = im[2,*]
-    orders = im[3,*]
-
-    n_ord = n_elements(uniq(orders))
-    print, n_order
-ENDIF
-
 END
+
 ;******************************************************************************
 ;     Save
 ;******************************************************************************
@@ -318,15 +303,15 @@ pro xplot_multi__define
 struct={xplot_multi,$
         allflux:ptrarr(100),$   ;all orders flux extracted
         allwave:ptrarr(100),$   ;all orders wave
-        checkbox:ptr_new(),$  ;id for checkboxes
+        checkbox:ptr_new(),$    ;id for checkboxes
         xplot_multi_base:0l,$   ;base widget id
         checkn:0,$              ;no. of checkboxes
-        chk_status:ptr_new(),$ ;checkbox status
+        chk_status:ptr_new(),$  ;checkbox status
         prevPath:'',$           ;previous path
         xplot:obj_new(),$       ;xplot
         extman:obj_new(),$      ;extraction data manager
         mw:obj_new(), $         ;message window
-        orders:ptr_new(),$          ;string order and last order
+        orders:ptr_new(),$      ;string order and last order
         selected:ptr_new(),$    ;orders that are selected
         colors:ptr_new()$       ;color bank
        }
@@ -362,7 +347,7 @@ xplot_multi=obj_new('xplot_multi')
 
 ;top level base
 tlb=widget_base($;group_leader=leader,$
-                title='Cross-Disperssed',$
+                title='Cross-Dispersed',$
                 /column,/align_center,mbar=mbar)
 ;base widget to pass the object reference
 ;base=widget_base(tlb,$
@@ -421,10 +406,6 @@ for i=0, n_elements(orders)-1 do begin
                                         method:'checkbox_events',$
                                         uval:strcompress(string(i))})
 endfor
-
-print, '============================'
-print, checkbox
-print, '============================'
 
 ;the display
 extDisp = cw_drip_xplot(tlb,xsize=xs,ysize=ys,mw=mw)
