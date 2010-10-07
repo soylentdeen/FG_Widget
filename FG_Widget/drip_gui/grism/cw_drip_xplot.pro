@@ -591,13 +591,13 @@ if (uvalue.uval eq 'all') then begin
 endif else begin
     widget_control,(*self.checkbox)[0],set_button=0
     ;self.chk_status(0)=0
-    (*self.chk_status)[fix(uvalue.uval)+1]=event.select
+    (*self.chk_status)[fix(uvalue.uval)]=event.select
 endelse
 
 selected=0
 for i=1,self.checkn-1 do begin
     if ((*self.chk_status)[i] eq 1) then begin
-        selected=[selected,max(*self.orders)-i+1]
+        selected=[selected,max(*self.orders)-i]
     endif
 endfor
 
