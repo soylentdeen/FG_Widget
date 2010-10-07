@@ -602,9 +602,14 @@ for i=1,self.checkn-1 do begin
 endfor
 
 if keyword_set(selected) then begin
-    *self.selected=selected[1:*];+(*self.orders)[0]
+    if n_elements(selected) gt 1 THEN BEGIN
+        *self.selected=selected[1:*];+(*self.orders)[0]
+    ENDIF else BEGIN
+        *self.selected=[max(*self.orders)-1]
+    ENDELSE
 endif
 
+self->draw_multi
 end
 
 
@@ -1032,10 +1037,10 @@ pro drip_xplot::setdata, buffer=buffer,$
               xtitle=xtitle,ytitle=ytitle,title=title,cursormode=cursormode,$
               plotabsxrange=plotabsxrange,plotxrange=plotxrange,$
               reg=reg,mw=mw,tempflux=tempflux,tempwave=tempwave,$
-              extman=extman
+              extobj=extobj
 
 
-
+if keyword_set(extobj) then self.extobj=extobj
 if keyword_set(buffer) then self.buffer= buffer
 if keyword_set(reg) then self.reg=reg
 if keyword_set(plotwin_wid) then self.plotwin_wid=plotwin_wid
@@ -1144,7 +1149,7 @@ end
 ;     DRAW_MULTI
 ;******************************************************************************
 
-pro drip_xplot::draw_multi, orders=orders, all = all, extobj = extobj
+pro drip_xplot::draw_multi, orders=orders, all = all
 
 orders=*self.orders
 if keyword_set(all) THEN BEGIN
@@ -1160,23 +1165,23 @@ colors = *self.colors
 nc=n_elements(colors)
 
 self->setdata, /no_oplotn
-n_color = selected[0]-min(orders)
+n_color = n_elements(selected)-1
 linecolor=colors[0,n_color]+256L*(colors[1,n_color]+256*colors[2,n_color])
 self->setdata,linecolor=linecolor
 
-wave=extobj->getdata(wave_num=selected[0])
-flux=extobj->getdata(flux_num=selected[0])
+wave=self.extobj->getdata(wave_num=selected[0])
+flux=self.extobj->getdata(flux_num=selected[0])
 self->draw, wave, flux
 
 for i = 1, n_elements(selected)-1 DO BEGIN
     self->setdata, /oplotn
-    n=selected[i]-min(orders)
+    n=i
     linecolor=colors[0,(n mod nc)]$
         +256L*(colors[1,(n mod nc)]$
         +256L*colors[2,(n mod nc)])
     self->setdata,linecolor=linecolor
-    wave=extobj->getdata(wave_num=selected(i))
-    flux=extobj->getdata(flux_num=selected(i))
+    wave=self.extobj->getdata(wave_num=selected(i))
+    flux=self.extobj->getdata(flux_num=selected(i))
     self->draw,wave,flux,/oplot
 ENDFOR
 self->setdata,xtitle='Wavelength (!7l!Xm)'
@@ -1296,11 +1301,23 @@ self.cf_obj=obj_new('drip_xplot_clickfit',self)
 
 end
 
+pro drip_xplot::remove_checkboxes
+
+if (self.check_base[1] ne 0) THEN $
+    widget_control, self.check_base[1], /destroy
+
+if (self.check_base[2] ne 0) THEN $
+    widget_control, self.check_base[2], /destroy
+
+self.check_base[1] = 0
+self.check_base[2] = 0
+end
+
 ;**********************************************************
 ;     add_checkboxes
 ;**********************************************************
 
-pro drip_xplot::add_checkboxes, orders=orders
+pro drip_xplot::add_checkboxes, orders=orders, extobj=extobj
 
 if keyword_set(orders) THEN BEGIN
     if (self.check_base[1] ne 0) THEN $
@@ -1327,7 +1344,7 @@ if keyword_set(orders) THEN BEGIN
 
     self.check_base[2] = chck_base     ; register the checkbox base
 
-    self->setdata,checkbox=checkbox,orders=orders
+    self->setdata,checkbox=checkbox,orders=orders,extobj=extobj
 ENDIF
 
 END
@@ -1443,6 +1460,7 @@ struct={drip_xplot, $
         $                       ;registry to hold values for x/y/zoom
         $;objects
         analobj:objarr(20),$    ;corresponding anal objects
+        extobj:obj_new(),$      ;current extraction manager object
         wc_obj:obj_new(),$      ;wave callibration object
         cf_obj:obj_new(),$      ;click fit object
         mw:obj_new()$           ;message window

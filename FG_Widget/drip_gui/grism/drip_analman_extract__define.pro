@@ -83,19 +83,17 @@ if keyword_set(*data) then begin
     self.extman->predefined_extraction,mode,dapname
     orders=self.extman->getdata(/orders)
     
-    self.xplot->add_checkboxes, orders=orders
-    self.xplot->draw_multi, orders=orders, /all, extobj=self.extman
-    ;xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$
-    ;                           orders=orders,$; mw=(self.dispman).mw,$
-    ;                           extman=self.extman,$
-    ;                           xsize=640,ysize=480)
-    ;id=widget_info(xplot_multi,/child)
-    ;widget_control,id,get_uvalue=obj
-    ;self.xplot_multi=obj
-    ; 
-    ;self.xplot_multi->start,self
-    ;
-    ;self.xplot_multi->draw,/all
+    self.xplot->add_checkboxes, orders=orders, extobj=self.extman
+    self.xplot->draw_multi, orders=orders, /all
+    if (mode lt 2) THEN BEGIN
+        self.xplot->add_checkboxes, orders=orders, extobj=self.extman
+        self.xplot->draw_multi, orders=orders, /all
+    ENDIF ELSE BEGIN
+        self.xplot->remove_checkboxes
+        wave = self.extman->getdata(wave_num=orders[0])
+        flux = self.extman->getdata(flux_num=orders[0])
+        self.xplot->draw, wave, flux
+    ENDELSE
 endif
 
 end
@@ -546,11 +544,11 @@ header = self.dataman->getelement(dapname,'HEADER')
 if (total(*data) ne 0.0) then begin   ; Allows a pipeline reset without initiating extract
 
     ; Determine what grism mode we're extracting
-    if ((drip_getpar(header, 'FILT2_S') eq 'grism2')) then value = 'G1xG2'
-    if ((drip_getpar(header, 'FILT2_S') eq 'grism4')) then value = 'G3xG4'
     gmode=strmid(drip_getpar(header, 'FILT1_S'),0,7)
-    if (gmode eq 'grism1 ') then value = 'G1'
-    if (gmode eq 'grism3') then value = 'G3'
+    if (strmatch(gmode, '*grism1*') eq 1) then value = 'G1'
+    if ((drip_getpar(header, 'FILT2_S') eq 'grism2')) then value = 'G1xG2'
+    if (strmatch(gmode, '*grism3*') eq 1) then value = 'G3'
+    if ((drip_getpar(header, 'FILT2_S') eq 'grism4')) then value = 'G3xG4'
     if (gmode eq 'grism 5') then value = 'G5'
     if (gmode eq 'grism 6') then value = 'G6'
 
@@ -567,8 +565,15 @@ if (total(*data) ne 0.0) then begin   ; Allows a pipeline reset without initiati
         self.extman->predefined_extraction,mode,dapname
         orders=self.extman->getdata(/orders)
     
-        self.xplot->add_checkboxes, orders=orders
-        self.xplot->draw_multi, orders=orders, /all, extobj=self.extman
+        if (mode lt 2) THEN BEGIN
+            self.xplot->add_checkboxes, orders=orders, extobj=self.extman
+            self.xplot->draw_multi, orders=orders, /all
+        ENDIF ELSE BEGIN
+            self.xplot->remove_checkboxes
+            wave = self.extman->getdata(wave_num=0)
+            flux = self.extman->getdata(flux_num=0)
+            self.xplot->draw, wave, flux
+        ENDELSE
         ;xplot_multi=cw_xplot_multi(self.xplot->getdata(/xzoomplot_base),$
         ;                       orders=orders,$; mw=(self.dispman).mw,$
         ;                       extman=self.extman,$

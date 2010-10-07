@@ -189,7 +189,7 @@ endif
 ;** widgets and objects
 ; base widget
 top=widget_base(column=2, title='FORCAST Spectral Extraction Widget v1.5', $
-;      mbar=mbar, /scroll, x_scroll_size=800, y_scroll_size=600) ; scroling
+;      mbar=mbar, /scroll, x_scroll_size=900, y_scroll_size=650) ; scroling
        mbar=mbar) ; non scroling
 ;control base
 cbase=widget_base(top, column=1, /base_align_left, /frame, space=5, $
