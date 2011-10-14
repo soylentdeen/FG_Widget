@@ -128,25 +128,25 @@ endif else begin
             ; Apply Mask
             jcleaned[*,*,i] = abs(fft(fft_jailbar*mask,/INVERSE))
             cleaned[*,*,i] = jcleaned[*,*,i]
-       endif
-       if jbmethod eq 'MEDIAN' then begin
-            jailbar[*,*,i]=cleaned[*,*,i]
-            ;median_col=fltarr(256,256)
-            ;temp_data=fltarr(16)
-            for j=0,255 do begin   ; change to i=0,240 for horizontal median
-                for k=0,255 do begin
-                    ;for l=0,15 do begin
-                        ;temp_data[k]=data[i+k,j]
-                    ;endfor
-                jailbar[j,k,i]=median(data[j,*,i]);  was median(temp_data)
-                endfor
-            endfor
-            jcleaned[*,*,i]=cleaned[*,*,i]/jailbar[*,*,i]
-            cleaned[*,*,i] = jcleaned[*,*,i]
-       endif
+        endif
+       ;if jbmethod eq 'MEDIAN' then begin
+        ;    jailbar[*,*,i]=cleaned[*,*,i]
+        ;    median_data=fltarr(256)
+        ;    row_data=fltarr(16)
+        ;    index=indgen(256/16)*16  ;index every 16th pixel in a row
+        ;    for k=0,255 do begin
+        ;        for j=0,15 do begin
+        ;            jailbar(index+j,k,i)=median(jailbar(index+j,k,i))
+        ;        endfor
+        ;    endfor
+        ;    cleaned[*,*,i] = cleaned[*,*,i]-jailbar[*,*,i]+median(cleaned[*,*,i])
+            ;print,median(jailbar[*,*,i])
+       ;endif
     endfor
 endelse
-;atv22,jailbar
+
+; get rid of funky top line using data from line second to top
+; - this has to be done because the top line is corrupted by clean
+cleaned[*,255,*]=cleaned[*,254,*]
 return, cleaned
-;return, jcleaned
 end

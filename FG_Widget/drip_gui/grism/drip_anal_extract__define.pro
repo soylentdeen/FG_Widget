@@ -227,8 +227,12 @@ endcase
 end
 
 ;****************************************************************************
-;     Extract - extraction of selected box
+;     Extract - extraction of selected box and plotting extracted spectra
 ;****************************************************************************
+
+;
+; NEED TO REPLACE THE EXTRACT CODE WITH PIPELINE MODE HERE
+;
 
 pro drip_anal_extract::extraction,event
 

@@ -47,7 +47,7 @@
 ;     DRIP_GETPAR - set data values
 ;****************************************************************************
 
-function drip_getpar, header, parname, vital=vital
+function drip_getpar, header, parname, vital=vital, writename=writename
 
 ; check if parameter is vital (to pass to drip_message)
 
@@ -111,7 +111,10 @@ if strpos(value,'''') eq 0 then begin
     value=strtrim(strmid(value,1,pos-1),2)
 endif
 ; add / change value in fits header
-sxaddpar,header,parname,value
+if keyword_set(writename) then $
+sxaddpar,header,writename,value $
+else sxaddpar,header,parname,value
+
 ; return value
 return,value
 end

@@ -48,7 +48,7 @@ PRO drip_anal_point::update
 
   ;check if in focus
   if self.focus or self.show then begin
-    ; get data
+     ; get raw image
      image=self.disp->getdata(/dataraw)
      imgsize=size(*image)
      if (imgsize[0] gt 0) then begin ; we have data
@@ -59,6 +59,8 @@ PRO drip_anal_point::update
         self.apradw=round(float(self.apradz)/zoom)
         self.isradw=round(float(self.isradz)/zoom)
         self.osradw=round(float(self.osradz)/zoom)
+        self.skyu=round(float(self.skyx)/zoom)
+        self.skyv=round(float(self.skyy)/zoom)
 
 
         ; check circle locations (if nesessary change display circle)
@@ -80,6 +82,8 @@ PRO drip_anal_point::update
         self.apradz=round(float(self.apradw)*zoom)
         self.isradz=round(float(self.isradw)*zoom)
         self.osradz=round(float(self.osradw)*zoom)
+        self.skyx=round(float(self.skyu)*zoom)
+        self.skyy=round(float(self.skyv)*zoom)
 
         ;** calculations and photometry
 
@@ -94,10 +98,10 @@ PRO drip_anal_point::update
         ; size of buffer
         bsz=size(buffer)
 
-        ; center coordinates of the buffer
+        ; center coordinates of the buffer relative to center of buffer
         xc=self.osradw < bsz[1]-1
-        yc=self.osradw < bsz[2]-1   ; >
-        
+        yc=self.osradw < bsz[2]-1
+
         ; find the r-coordinate for all the points in buffer
         r=fltarr(bsz[1],bsz[2])
         for i=0,bsz[1]-1 do begin
@@ -106,21 +110,71 @@ PRO drip_anal_point::update
             endfor
         endfor
         apid=where(r lt self.apradw)
-        skyid=where(r gt self.isradw and r lt self.osradw)
+        
+
+        ; get buffer and center for noise
+        if self.skymode eq 'cent' then begin
+            skybuffer=buffer
+            skyid=where((r gt self.isradw) and (r lt self.osradw))
+            
+        endif else begin
+            ; get image of all inside outer ring
+            x0=self.skyu-self.osradw > 0
+            x1=self.skyu+self.osradw < imgsize[1] -1
+            y0=self.skyv-self.osradw > 0
+            y1=self.skyv+self.osradw < imgsize[2] -1
+
+            ; crop the image
+            skybuffer=(*image)[x0:x1,y0:y1]
+            ; size of buffer
+            skybsz=size(skybuffer)
+
+            ; center coordinates of the buffer
+            skyxc=self.osradw < skybsz[1]-1
+            skyyc=self.osradw < skybsz[2]-1
+            
+            ; find the r-coordinate for all the points in buffer
+            r=fltarr(skybsz[1],skybsz[2])
+            for i=0,skybsz[1]-1 do begin
+                for j=0,skybsz[2]-1 do begin
+                    r[i,j]=sqrt((skyxc-i)^2+(skyyc-j)^2)-0.5
+                endfor
+            endfor
+            skyid=where(r lt self.osradw)
+            
+        endelse
 
         ;gain=float(drip_getpar(*self.basehead,'EPERADU')) ;get gain from header
         eperadu=1294 ; SWC and LWC electrons per A/D unit
-        source=total(buffer[apid],/nan)-total(buffer[skyid],/nan) * $
-               n_elements(apid)/n_elements(skyid)
+        
+        source=total(buffer[apid],/nan)/n_elements(buffer[apid])    ;-total(skybuffer[skyid],/nan) * $
+               ;n_elements(apid)/n_elements(skyid)
+        
+        ;gcntrd, buffer,xc, yc, x, y, 4.0   ; Seems to work
+             
+        photon_noise=sqrt(source)
+        noise = stdev(skybuffer[skyid])
         ; Calculate noise in photometry anulus
         ; Calulate sum of source pixel values (in electrons)
-        source_electrons=source*eperadu
+        
+        ;source_electrons=source ;*1e6
+        ;source*=1e6   ; to get e-/s in the 'Coadded' frame
+        
         ; Calculate photon noise of source by taking sqrt
-        photon_noise=sqrt(source_electrons)
+        ;photon_noise=sqrt(source)
         ; Total noise is std of sky anulus + photon noise
-        noise=sqrt(n_elements(apid)*(stdev(buffer[skyid] * $
-                                           eperadu))^2+source_electrons)
-        s2n=source_electrons/noise ; calculate S/N ratio
+        ;noise =  sqrt((stdev(skybuffer[skyid])*1e6)^2 + (photon_noise)^2)
+        ;noise = sqrt((stdev(skybuffer[skyid]))^2+(photon_noise)^2)
+        ;noise = stdev(skybuffer[skyid])
+        
+        ;noise_electrons=noise
+        
+        ;noise_electrons=sqrt(n_elements(apid) * (stdev(skybuffer[skyid] * eperadu))^2 $
+        ;           + photon_noise)
+                   
+        ;s2n=source_electrons/noise_electrons ; calculate S/N ratio
+        s2n=source/noise   ; S/N ratio in counts (e- conversion now done in drip_stack)
+        
         ; Centroid and FWHM
         ;find centroid (xcen,ycen)
         
@@ -167,7 +221,7 @@ PRO drip_anal_point::update
         fwhmy=2*SQRT(2*ALOG(2))*self.fitdv
 
         ; fix format for table numbers
-        all = [ fwhmx, fwhmy, source_electrons, noise, s2n ]
+        all = [ fwhmx, fwhmy, source, noise, s2n ]
         text = strarr(5)
         for i= 0,4 do begin
            x = all[i]
@@ -216,32 +270,50 @@ color2=0+256L*(0+256L*255)
 ; draw circles
 ; aperture
 tvcircle, self.apradz, self.centx, self.centy, color=color
-; inner sky
-tvcircle, self.isradz, self.centx, self.centy, color=color1
-; outer sky
-tvcircle, self.osradz, self.centx, self.centy, color=color2
+; sky circles
+if self.skymode eq 'cent' then begin
+    ; inner sky
+   tvcircle, self.isradz, self.centx, self.centy, color=color1
+   ; outer sky
+   tvcircle, self.osradz, self.centx, self.centy, color=color2
+endif else begin
+   ; outer sky
+   tvcircle, self.osradz, self.skyx, self.skyy, color=color2
+endelse
 
 ; draw diamonds
-d=3                             ; size of diamond
+d=3  ; size of diamond
 ; for aperture
 ; center of the diamond
 ax=self.centx & ay=self.centy+self.apradz
 ;coordinates for the diamond
 dax=[ax-d,ax+d,ax+d,ax-d] & day=[ay+d,ay+d,ay-d,ay-d]
-;draw diamonds
+; draw diamonds
 polyfill,dax,day,color=color,/device
 
-; for inner sky
-; center of the diamond
-ix=self.centx & iy=self.centy-self.isradz
-;coordinates of the diamond
-dix=[ix-d,ix+d,ix+d,ix-d] & diy=[iy+d,iy+d,iy-d,iy-d]
-;draw diamonds
-polyfill,dix,diy,color=color1,/device
+if self.skymode eq 'cent' then begin
+    ; for inner sky
+    ; center of the diamond
+    ix=self.centx & iy=self.centy-self.isradz
+    ;coordinates of the diamond
+    dix=[ix-d,ix+d,ix+d,ix-d] & diy=[iy+d,iy+d,iy-d,iy-d]
+    ;draw diamonds
+    polyfill,dix,diy,color=color1,/device
+    ; outer sky diamond center
+    ox=self.centx & oy=self.centy+self.osradz
+endif else begin
+    ; outer sky diamond center
+    ox=self.skyx & oy=self.skyy+self.osradz
+    ; if sky is offset, draw connecting line between circles 
+    dx=self.skyx-self.centx
+    dy=self.skyy-self.centy
+    dr=sqrt(dx*dx+dy*dy)
+    plots, self.centx+dx*self.apradz/dr, self.centy+dy*self.apradz/dr, /device
+    rn=(dr-self.osradz)/dr
+    plots, self.centx+dx*rn, self.centy+dy*rn, /continue, color=color2, /device
+ endelse
 
 ; for outer sky
-; center of the diamond
-ox=self.centx & oy=self.centy+self.osradz
 ;coordinates of the diamond
 dox=[ox-d,ox+d,ox+d,ox-d] & doy=[oy+d,oy+d,oy-d,oy-d]
 ;draw diamonds
@@ -290,6 +362,27 @@ case event.id of
             self.disp->draw
         endelse
     end
+    self.skywid:begin
+        ; if center -> offset
+        if self.skymode eq 'cent' then begin
+            self.skymode='off'
+            widget_control, self.skywid, set_value='Off'
+        endif else begin
+            self.skymode='cent'
+            widget_control, self.skywid, set_value='Cent'
+            ; make sure sky_out > sky_in > aperture
+            zoom=self.disp->getdata(/zoom)
+            if self.apradz+3 gt self.isradz then begin
+                self.isradz = self.apradz+3
+                self.isradw = round(float(self.isradz)/zoom)
+            endif
+            if self.osradz lt self.isradz+3 then begin
+                self.osradz = self.isradz+3
+                self.osradw = round(float(self.osradz)/zoom)
+            endif
+        endelse
+        self.disp->draw
+    end
     self.logwid:begin
         ; if log
         self->log
@@ -297,6 +390,7 @@ case event.id of
     else:
 endcase
 end
+
 
 ;****************************************************************************
 ;     LOG - log data to file
@@ -341,6 +435,7 @@ end
 function drip_anal_point::move, xa, ya, xb, yb, final=fin
 
 ; u/v/w is image coordinates, x/y/z is display coordinates
+; a is for aperture, i for inner sky circle, o for outer sky circle
 
 ; get u/v/w values of image boundary (all float)
 zoom=self.disp->getdata(/zoom)
@@ -353,56 +448,103 @@ xmin=0.0
 ymin=0.0
 xmax=float(imgsize[1])*zoom-1
 ymax=float(imgsize[2])*zoom-1
-; get u/v/w values of original box location
+; get u/v/w values of original box location (from u/v/w values)
 origcentx=round(float(self.centu)*zoom)
 origcenty=round(float(self.centv)*zoom)
 origapradz=round(float(self.apradw)*zoom)
 origisradz=round(float(self.isradw)*zoom)
 origosradz=round(float(self.osradw)*zoom)
-; set change variable
-change=0
-; find the rad from the center
+origskyx=round(float(self.skyu)*zoom)
+origskyy=round(float(self.skyv)*zoom)
+
+; find the radii from the center
 rada=sqrt((xa-origcentx)^2 + (ya-origcenty)^2)
 radb=sqrt((xb-origcentx)^2 + (yb-origcenty)^2)
-radmax=sqrt((xmax-origcentx)^2 + (ymax-origcenty)^2)
+radsky=sqrt((xa-origskyx)^2 + (ya-origskyy)^2)
+radx=((xmax-origcentx) < origcentx)
+rady=((ymax-origcenty) < origcenty)
+radmax=(radx < rady)
+radx=((xmax-origskyx) < origskyx)
+rady=((ymax-origskyy) < origskyy)
+radmaxsky=(radx < rady)
 ; center of diamonds
 ; aperture
 ax=self.centx & ay=self.centy+self.apradz
 ; inner sky
 ix=self.centx & iy=self.centy-self.isradz
 ; outer sky
-ox=self.centx & oy=self.centy+self.osradz
+if self.skymode eq 'cent' then begin
+   ox=self.centx & oy=self.centy+self.osradz
+endif else begin
+   ox=self.skyx & oy=self.skyy+self.osradz
+endelse
 ; size of diamond
 d=5
+
+;print,'a=',ax,ay,' i=',ix,iy,' o=',ox,oy
+;print,'init=',xa,ya, ' mode=',self.mode
+
+; set change variable
+change=0
+; If no ongoing change -> look if object is changed by user
 if (self.mode eq 'none') then begin
-;inside aperture diamond
+    ;inside aperture diamond
     if (((xa gt ax-d) and (xa lt ax+d)) $
         and ((ya gt ay-d) and (ya lt ay+d))) then begin
         ; set mode to aperture resize
         self.mode='apsz'
-    endif $                     ; inside inner sky diamond
-    else if (((xa gt ix-d) and (xa lt ix+d)) $
-             and ((ya gt iy-d) and (ya lt iy+d))) then begin
+    endif
+    ; inside inner sky diamond (only in skycenter mode)
+    if(((xa gt ix-d) and (xa lt ix+d)) and ((ya gt iy-d) and (ya lt iy+d)) $
+            and (self.skymode eq 'cent')) then begin
         ; set mode to inner sky resize
         self.mode='issz'
-    endif $                     ; inside outer sky diamond
-    else if (((xa gt ox-d) and (xa lt ox+d)) $
+    endif
+    ; inside outer sky diamond
+    if (((xa gt ox-d) and (xa lt ox+d)) $
              and ((ya gt oy-d) and (ya lt oy+d))) then begin
         ; set mode to outer sky resize
         self.mode='ossz'
-    endif $               ; inside the circles and not on the diamonds
-    else if (rada lt origosradz) then begin
-        ; set mode to move
-        self.mode='move'
-        self.centx= ((xa+2) > (xmin)) < (xmax)
-        self.centy= ((ya+2) > (ymin)) < (ymax)
-        change=1
+    endif
+    ; inside the circles and not on the diamonds (only if mode is still none)
+    if self.mode eq 'none' then begin
+        if self.skymode eq 'cent' then begin
+            ; if center mode, check center distance 
+            if (rada lt origosradz) then begin
+                ; set mode to move
+                self.mode='move'
+                self.centx= (xa > (xmin+2)) < (xmax-2)
+                self.centy= (ya > (ymin+2)) < (ymax-2)
+                change=1
+            endif
+        endif else begin
+            ; check aperture movement
+            if (rada lt origapradz) then begin
+                ; set mode to move (aperture)
+                self.mode='move'
+                self.centx= (xa > (xmin+2)) < (xmax-2)
+                self.centy= (ya > (ymin+2)) < (ymax-2)
+                change=1
+            endif
+            ; check sky movement
+            if (radsky lt origosradz) then begin
+                ; set mode to move (aperture)
+                self.mode='movesky'
+                self.skyx= (xa > (xmin+2)) < (xmax-2)
+                self.skyy= (ya > (ymin+2)) < (ymax-2)
+                change=1
+            endif
+        endelse
     endif
 endif
 
 case (self.mode) of
     'apsz':begin
-        self.apradz=((yb-origcenty) > 5) < (self.isradz -5)
+        if self.skymode eq 'cent' then begin
+            self.apradz=((yb-origcenty) > 5) < (self.isradz -3)
+        endif else begin
+            self.apradz=((yb-origcenty) > 5) < radmax
+        endelse
         change=1
     end
     'issz':begin
@@ -410,19 +552,29 @@ case (self.mode) of
         change=1
     end
     'ossz':begin
-        self.osradz= ((yb-origcenty) > (self.isradz+3)) < radmax
+        if self.skymode eq 'cent' then begin
+            self.osradz= ((yb-origcenty) > (self.isradz+3)) < radmax
+        endif else begin
+            self.osradz= ((yb-origskyy) > 5) < radmaxsky
+        endelse
         change=1
     end
     'move':begin
         dx=xb-xa
         dy=yb-ya
-        self.centx= ((xb+2) > (xmin)) < (xmax)
-        self.centy= ((yb+2) > (ymin)) < (ymax)
+        self.centx= ((xb+2) > (xmin+2)) < (xmax-2)
+        self.centy= ((yb+2) > (ymin+2)) < (ymax-2)
+        change=1
+    end
+    'movesky':begin
+        dx=xb-xa
+        dy=yb-ya
+        self.skyx= ((xb+2) > (xmin+2)) < (xmax-2)
+        self.skyy= ((yb+2) > (ymin+2)) < (ymax-2)
         change=1
     end
     'none':
 endcase
-
 
 if keyword_set(fin) then self.mode='none'
 ;if there is change
@@ -433,18 +585,24 @@ if (change ne 0) then begin
     newapradw=round(float(self.apradz)/zoom)
     newisradw=round(float(self.isradz)/zoom)
     newosradw=round(float(self.osradz)/zoom)
+    newskyu=round(float(self.skyx)/zoom)
+    newskyv=round(float(self.skyy)/zoom)
     ; derive new circle positions in display coordinates
     self.centx=round(float(newcentu)*zoom)
     self.centy=round(float(newcentv)*zoom)
     self.apradz=round(float(newapradw)*zoom)
     self.isradz=round(float(newisradw)*zoom)
     self.osradz=round(float(newosradw)*zoom)
+    self.skyx=round(float(newskyu)*zoom)
+    self.skyy=round(float(newskyv)*zoom)
     if keyword_set(fin) then begin
         self.centu=newcentu
         self.centv=newcentv
         self.apradw=newapradw
         self.isradw=newisradw
         self.osradw=newosradw
+        self.skyu=newskyu
+        self.skyv=newskyv
     endif
     return,1
 endif else return,0
@@ -463,6 +621,7 @@ self.title=title ; what will be put in label
 self.labelwid=wids.label
 self.showwid=wids.show
 self.topwid=wids.top
+self.skywid=wids.sky
 self.closewid=wids.close
 self.logwid=wids.log
 self.colorwid=wids.color
@@ -488,6 +647,14 @@ if self.top then begin
     widget_control, self.topwid, set_value=' X '
 endif else begin
     widget_control, self.topwid, set_value='   '
+endelse
+; skywid
+widget_control, self.skywid, $
+  set_uvalue={object:self, method:'input'}
+if self.skymode eq 'cent' then begin
+    widget_control, self.skywid, set_value='Cent'
+endif else begin
+    widget_control, self.skywid, set_value='Off'
 endelse
 ; logwid
 widget_control, self.logwid, $
@@ -570,7 +737,10 @@ self.centv=self.centy
 self.apradw=self.apradz
 self.isradw=self.isradz
 self.osradw=self.osradz
+self.skyx=xsize/4
+self.skyy=ysize/2
 self.mode='none'
+self.skymode='cent'
 self.color=[255,0,0]
 ; set fit locations
 self.fitu=float(xsize/2)
@@ -591,6 +761,7 @@ struct={drip_anal_point, $
         topwid:0L, $            ; widget id for top indicator
         closewid:0L, $          ; widget id for close button
         showwid:0L, $           ; widget id for show button
+        skywid:0L, $            ; widget id for sky button
         logwid:0L, $            ; widget id for log button
         colorwid:0L, $          ; widget id for color selector
         datawid:lonarr(5), $    ; widget ids for data displays (row, wid1, . .
@@ -610,7 +781,10 @@ struct={drip_anal_point, $
         apradw:0,apradz:0, $    ; aperture radius (image , display)
         isradw:0,isradz:0, $    ; inner sky circle radius
         osradw:0,osradz:0, $    ; outer sky circle radius
+        skyu:0, skyv:0, $       ; center of sky circle (img coords)
+        skyx:0, skyy:0, $       ; center of sky circle (disp coords)
         mode:'',$               ; resize/move
+        skymode:'', $           ; sky circle centered or offset ('cent' / 'off')
                                 ;
         color:bytarr(3), $      ; array for color values
         wid:0B, $               ; window id of display

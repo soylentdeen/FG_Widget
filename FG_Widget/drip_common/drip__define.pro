@@ -109,6 +109,8 @@ pro drip::setdata, mode=mo, n=n, readme=rm, $
         pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
         badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
         cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $  ;LIN
+        
+        extracted=exd, allwave=alw, allflux=alf,$ ;7/7/11
         merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $ ;EXT  , extspec=exs
         badmap=bm, darks=ds, cleanddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
         masterflat=mf, lincor=lnc ;LIN
@@ -131,6 +133,11 @@ if keyword_set(lnr) then *self.linearized=lnr  ;LIN
 if keyword_set(fl) then *self.flatted=fl
 if keyword_set(st) then *self.stacked=st
 if keyword_set(ud) then *self.undistorted=ud
+
+if keyword_set(exd) then *self.extracted=exd ;7/7/11
+if keyword_set(alw) then *self.allwave=alw   ;7/7/11
+if keyword_set(alf) then *self.allflux=alf   ;7/7/11
+
 if keyword_set(md) then *self.merged=md
 if keyword_set(coa) then *self.coadded=coa
 if keyword_set(cor) then *self.coadded_rot=cor
@@ -155,7 +162,9 @@ function drip::getdata, mode=mo, n=n, readme=rm, $
              pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
              badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
              cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $ ;LIN
-             merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $ ;EXT  extspec=exs,
+            
+ extracted=exd, allwave=alw, allflux=alf,$ ;7/7/11
+ merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $ ;EXT  extspec=exs,
              badmap=bm, darks=ds, cleaneddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
              masterflat=mf, lincor=lnc ;LIN
 
@@ -177,6 +186,11 @@ if keyword_set(lnr) then return, *self.linearized  ;LIN
 if keyword_set(fl) then return, *self.flatted
 if keyword_set(st) then return, *self.stacked
 if keyword_set(ud) then return, *self.undistorted
+
+if keyword_set(exd) then return, *self.extracted ;7/7/11
+if keyword_set(alw) then return, *self.allwave   ;7/7/11
+if keyword_set(alf) then return, *self.allflux   ;7/7/11
+
 if keyword_set(md) then return, *self.merged
 if keyword_set(coa) then return, *self.coadded
 if keyword_set(cor) then return, *self.coadded_rot
@@ -197,7 +211,10 @@ structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
            badfile:self.badfile, linfile:self.linfile, flatfile:self.flatfile, $ ;LIN
            data:*self.data, cleaned:*self.cleaned, badflags:*self.badflags, $
            linearized:*self.linearized, flatted:*self.flatted, stacked:*self.stacked, $ ;LIN
-           undistorted:*self.undistorted, merged:*self.merged, $
+           undistorted:*self.undistorted,$
+
+           extracted:*self.extracted, allwave:*self.allwave, allflux:*self.allflux,$ ;7/7/11
+           merged:*self.merged, $
            coadded:*self.coadded, coadded_rot:rot(*self.coadded, 90), $ ;extspec:*self.extspec, $;  EXT
            lastcoadd:*self.lastcoadd, badmap:*self.badmap, darks:*self.darks, $
            cleaneddarks:*self.cleaneddarks, darksum:*self.darksum, flats:*self.flats, $
@@ -290,44 +307,68 @@ endif
 ; make output filename and set data
 namepos=strpos(self.filename,'.fit',/reverse_search)
 if keyword_set(mf) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_masterflat.fits'
+    fname=strmid(self.filename,0,namepos)+'_masterflat.fits'
     data=self.masterflat
 endif else if keyword_set(cl) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_cleaned.fits'
+    fname=strmid(self.filename,0,namepos)+'_cleaned.fits'
     data=self.cleaned
 endif else if keyword_set(lnr) then begin ; LIN
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_linearized.fits'
+    fname=strmid(self.filename,0,namepos)+'_linearized.fits'
     data=self.linearized    
 endif else if keyword_set(fl) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_flatted.fits'
+    fname=strmid(self.filename,0,namepos)+'_flatted.fits'
     data=self.flatted
 endif else if keyword_set(st) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_stacked.fits'
+    fname=strmid(self.filename,0,namepos)+'_stacked.fits'
     data=self.stacked
 endif else if keyword_set(ud) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_undistorted.fits'
+    fname=strmid(self.filename,0,namepos)+'_undistorted.fits'
     data=self.undistorted
 endif else if keyword_set(md) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_merged.fits'
+    fname=strmid(self.filename,0,namepos)+'_merged.fits'
     data=self.merged
 endif else if keyword_set(co) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_coadded.fits'
+    fname=strmid(self.filename,0,namepos)+'_coadded.fits'
     data=self.coadded
 endif else if keyword_set(cor) then begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_coadded_rot.fits'
+    fname=strmid(self.filename,0,namepos)+'_coadded_rot.fits'
     data=self.coadded_rot
 ;endif else if keyword_set(exs) then begin
-;    fname=self.pathsave+strmid(self.filename,0,namepos)+'_extspec.fits'
+;    fname=strmid(self.filename,0,namepos)+'_extspec.fits'
 ;    data=self.extspec
 endif else begin
-    fname=self.pathsave+strmid(self.filename,0,namepos)+'_reduced.fits'
+    fname=strmid(self.filename,0,namepos)+'_reduced.fits'
     data=self.coadded
 endelse
+; add pathsave to fname if there is no full path in fname
+if strpos(self.filename,path_sep()) lt 0 then fname = self.pathsave + fname
 ; check for overriding filename selection
 if keyword_set(filename) then fname=filename
 ; save file
 fits_write,fname,*data,*self.basehead
 drip_message,'saved reduced data file: '+fname
+
+
+;SAVE EXTRACTED SPECTRA AS FITS TABLE
+
+if keyword_set(fname) then begin
+fname=strmid(self.filename,0,namepos)+'_reduced_ext.fits'
+  ; if not(strmatch(file,'*.fits')) then file=file+'.fits'
+  ; self.prevPath=prevPath
+;print, 'allwave',((*self.extracted)[*,0])
+;print, 'allflux',((*self.extracted)[*,1])
+  len=n_elements((*self.extracted)[*,1])
+  orders=((*self.extracted)[*,2]);(intarr(len))+1
+   error=dblarr(len)
+   data=[transpose((*self.extracted)[*,0]),$ ;allwave
+         transpose((*self.extracted)[*,1]),$ ;allflux
+         transpose(error),$
+         transpose(orders)]
+   collabels=['wavelength', 'flux', 'flux_error','order']
+   ;self.mw->print,'Written file '+fname  
+   drip_message, 'Wrote File'+fname
+   wr_spfits,fname,data, len, collabels=collabels
+endif
 end
 
 
@@ -380,7 +421,44 @@ end
 pro drip::getcal
 ;** read files and enter obs_id's
 ; read bad pixel map
-self.badfile=drip_getpar(*self.basehead,'BADFILE')
+
+;Find mode of grism
+print, drip_getpar(*self.basehead,'FILT1_S')
+print, drip_getpar(*self.basehead,'FILT2_S')
+if(drip_getpar(*self.basehead,'FILT1_S') eq 'G1+blk')then mode =2
+if(drip_getpar(*self.basehead,'FILT1_S') eq 'G3+blk')then mode =3
+if((drip_getpar(*self.basehead,'FILT4_S') eq 'grism5+blk')) then mode = 4
+if((drip_getpar(*self.basehead,'FILT4_S') eq 'grism6+blk')) then mode = 5
+if((drip_getpar(*self.basehead,'FILT1_S') eq 'G1+blk') and $
+   (drip_getpar(*self.basehead,'FILT2_S') eq 'grism 2')) then mode = 0
+if((drip_getpar(*self.basehead,'FILT1_S') eq 'G3+blk') and $
+   (drip_getpar(*self.basehead,'FILT2_S') eq 'grism 4')) then mode =1
+
+if (mode le 3) then begin
+   badpix = '../Cal/swc_badpix.fits' 
+   dark = '../Cal/swc_dark.fits'
+endif
+if (mode gt 3) then begin
+   badpix = '../Cal/lwc_badpix.fits'
+   dark = '../Cal/swc_dark.fits'
+endif
+;              ||||                                     ||||
+;***********   VVVV NEEDS REVISION FOR NEWLY MADE FLATS VVVV **********
+; flat files x3 (m, d, b3) NEEDS TO FIND INFO IN HEADER (DNE
+; CURRENTLY)
+; b3 setting will be removed?
+case mode of
+   0: flat = '../Cal/G1xG2_m_flat.fits'
+   1: flat = '../Cal/G3xG4_m_flat.fits'
+   2: flat = '../Cal/G1_m_Coldflat.fits'
+   3: flat = '../Cal/G3_m_flat.fits'
+   4: flat = '../Cal/G5_m_flat.fits'
+   5: flat = '../Cal/G6_IRS_m_flat.fits'
+endcase
+;***********   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ***********
+
+
+self.badfile=badpix
 if self.badfile eq 'x' then begin
     ; no file found - set badmap to 0.0
     drip_message, 'drip::getcal - No Bad Pixel Map'
@@ -406,7 +484,7 @@ endif else begin
 endelse
 *self.badflags=*self.badmap
 ; read dark frames
-self.darkfile=drip_getpar(*self.basehead,'DARKFILE')
+self.darkfile=dark
 if self.darkfile eq 'x' then begin
     ; no file found - set dark to 0.0
     drip_message, 'drip::getcal - No Dark Frames'
@@ -436,11 +514,11 @@ det_chan=fix(drip_getpar(*self.basehead,'DETCHAN'),type=2)
 no_linearity_data = 0 ; 1 = 'No linearity data found', 0 = 'linearity data found'
 ;det_chan=fix(sxpar(*self.basehead,'DETCHAN'))
 if det_chan eq 0 then begin
-    self.linfile=self.pathload+'SWC_linearity_coeff.fits'
+    self.linfile=self.pathload+'../Cal/SWC_linearity_coeff.fits'
     *self.lincor=readfits(self.linfile,/noscale)
 endif else begin
     if det_chan eq 1 then begin
-    self.linfile=self.pathload+'LWC_linearity_coeff.fits'
+    self.linfile=self.pathload+'../Cal/LWC_linearity_coeff.fits'
     *self.lincor=readfits(self.linfile,/noscale)
 endif else begin
     ; no valid data loaded - set linearity correction to 1.0 (no correction)
@@ -458,7 +536,8 @@ endif
 
 ; read flat fields
 no_flat_data=0 ; 1 = 'No flat data found', 0 = 'flat data found'
-if self.flatfile eq '' then self.flatfile=drip_getpar(*self.basehead,'FLATFILE')
+if self.flatfile eq '' then self.flatfile=flat
+;print, 'self.flatfile = ', self.flatfile
 if self.flatfile eq 'x' then begin
     ; no file found - set flat to 1.0
     drip_message, 'drip::getcal - No Flat Frames'
@@ -491,26 +570,30 @@ endelse
 drip_message,'drip::getcal - done cleaning darks'
 s=size(*self.cleaneddarks)
 if s[0] gt 2 then darksum=total(*self.cleaneddarks,3)/s[3] else darksum=*self.cleaneddarks
-*self.darksum=darksum
-
+*self.darksum=darksum/s[3]  ; mean of darks
 ; make flatsum
 *self.cleanedflats=drip_clean(*self.flats,*self.badmap,*self.basehead)
+
 drip_message,'drip::getcal - done cleaning flats'
 ;Apply ordermask to flatfield: used for grism mode (if grism mode
 ;detected) to ignore inter-order pixels when calculating median values
 ;for the master flatfield image. If imaging mode, then used the entire
 ;array.
 
-filter=drip_getpar(*self.basehead,'FILT2_S')
+;filter=drip_getpar(*self.basehead,'FILT2_S')
 ;filter=sxpar(*self.basehead,'FILT2_S')
-if ((filter eq 'grism2') OR (filter eq 'grism4')) then begin
-    ;get the order mask
-    fname=drip_getpar(*self.basehead,'MASKFILE')
-    ;fname=sxpar(*self.basehead,'MASKFILE')
+
+
+if mode eq  0 then begin  ;get the order mask
+    fname='../Cal/G1xG2_order_mask.fits'
     ordermask=readfits(self.pathload+fname)
-endif else begin
-   ordermask=dblarr(256,256)+1
-endelse
+endif
+if mode eq   1 then begin ;get the order mask
+    fname='../Cal/G3xG4_order_mask.fits'
+    ordermask=readfits(self.pathload+fname)
+endif
+if mode gt  1 then ordermask=dblarr(256,256)+1
+
 ;Build master flatfield image. Flat files are 4-plane fits data cubes
 ; MASTERFLAT IS DARK-SUBTRACTED
 ;Planes are: HOT (0), HOT (1), COLD (2), COLD (3)
@@ -518,7 +601,8 @@ s=size(*self.cleanedflats)
 if s[0] eq 2 then begin
     flatdiff=*self.cleanedflats;    -*self.darksum
     master=flatdiff/median(flatdiff[where(ordermask eq 1)])
-    if (no_flat_data eq 0) then master[where(ordermask eq 0)]=1.
+    if (mode eq 0 or mode eq 1) then master[where(ordermask eq 0)]=1.
+    ;(no_flat_data eq 0) replaced by mode eq 0/1 to work with single disperse
 endif
 if s[0] eq 3 then begin
     CASE 1 of 
@@ -529,7 +613,7 @@ if s[0] eq 3 then begin
           lflat=((*self.cleanedflats)[*,*,2]+(*self.cleanedflats)[*,*,3])/2
           flatdiff=hflat-lflat
           master=flatdiff/median(flatdiff[where(ordermask eq 1)]) ; normalize
-          if ((filter eq 'grism2') OR (filter eq 'grism4')) then master[where(ordermask eq 0)]=1.
+          if ((mode eq 0) OR (mode eq 1)) then master[where(ordermask eq 0)]=1.
           end
        (s[3] eq 2): begin
           ; First frame is integration on a warmer/brighter source
@@ -538,18 +622,18 @@ if s[0] eq 3 then begin
           lflat=((*self.cleanedflats)[*,*,1])
           flatdiff=hflat-lflat
           master=flatdiff/median(flatdiff[where(ordermask eq 1)]) ; normalize
-          if ((filter eq 'grism2') OR (filter eq 'grism4')) then master[where(ordermask eq 0)]=1.
+          if ((mode eq 0) OR (mode eq 1)) then master[where(ordermask eq 0)]=1.
           end
        (s[3] eq 3) OR (s[3] gt 4): begin  ; Assume planes are images of same source
           flatsum=total(*self.cleanedflats,3)
           ; make masterflat: darksub and normalize
           flatdiff=flatsum    ;flatsum-*self.darksum
           master=flatdiff/median(flatdiff[where(ordermask eq 1)])
-          if ((filter eq 'grism2') OR (filter eq 'grism4')) then master[where(ordermask eq 0)]=1.
+          if ((mode eq 0) OR (mode eq 1)) then master[where(ordermask eq 0)]=1.
           end
     ENDCASE
 endif
-*self.masterflat=master
+*self.masterflat=drip_jbclean(master,header)
 
 ;apply non-linearity correction...                        LIN
 if no_flat_data eq 0 then *self.masterflat=(drip_nonlin(master, *self.lincor))
@@ -706,6 +790,9 @@ ptr_free, self.chopsub
 ptr_free, self.nodsub
 ptr_free, self.stacked
 ptr_free, self.undistorted
+ptr_free, self.allwave
+ptr_free, self.allflux
+ptr_free, self.extracted
 ptr_free, self.merged
 ptr_free, self.coadded
 ptr_free, self.coadded_rot
@@ -744,6 +831,15 @@ self.nodsub=ptr_new(/allocate_heap)
 *self.nodsub=-1
 self.stacked=ptr_new(/allocate_heap)
 self.undistorted=ptr_new(/allocate_heap)
+
+;below 7/7/11
+self.extracted=ptr_new(/allocate_heap)
+*self.extracted=-1
+self.allwave=ptr_new(/allocate_heap)
+*self.allwave=-1
+self.allflux=ptr_new(/allocate_heap)
+*self.allflux=-1
+
 self.merged=ptr_new(/allocate_heap)
 self.coadded=ptr_new(/allocate_heap)
 self.coadded_rot=ptr_new(/allocate_heap)
@@ -823,6 +919,11 @@ struct={drip, $
         nodsub:ptr_new(), $         ; nod subtraced frames
         stacked:ptr_new(), $        ; stacked data
         undistorted:ptr_new(), $    ; undistored data
+
+        extracted:ptr_new(), $      ; extracted data    ;7/7/11
+        allwave:ptr_new(), $        ; wavelength data   ;7/7/11
+        allflux:ptr_new(), $        ; flux data         ;7/7/11
+
         merged:ptr_new(), $         ; merged data
         coadded:ptr_new(), $        ; coadded data
         coadded_rot:ptr_new(), $    ; coadded rotated

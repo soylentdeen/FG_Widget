@@ -19,7 +19,7 @@
 ; HISTORY;
 ; =============================
 ; 7/23/10 - Josh Cheng and Casey Deen added nodding extraction mode
-
+; 8/5/10  - Rob Lewis -Ithaca College changed map for most recent cooldown
 pro drip_extman::setmap,mode
 ; mode - grism mode
 ;         0 - G1xG2
@@ -34,10 +34,16 @@ pro drip_extman::setmap,mode
 case mode of
     0:begin            ; G1xG2
         ;   [ [ [y0_bottom_left, y0_bottom_right], [y1_bl, y1_br], ...], [ [x0_left, x0_right], [x1_l, x1_r], ... ] ]
-         *self.map=[[[202, 233],[162,210],[127,173],[98,144],[69,110],[46,84],[20,58],[0,38]], $
-         [[0,159],[0,255],[0,255],[0,255],[0,255],[0,255],[0,255], [0,255]]]
-         *self.ord_height = [21, 21, 21, 21, 21, 21, 21, 18]
+        ;Map Updated as of CD043. Orders remain constant
+        ; *self.map=[[[202, 233],[162,210],[127,173],[98,144],[69,110],[46,84],[20,58],[0,38]], $
+        ;            [[0,159],   [0,255],  [0,255],  [0,255], [0,255], [0,255],[0,255],[0,255]]]
+        ; *self.ord_height = [21, 21, 21, 21, 21, 21, 21, 18]
+       
+         *self.map=[[[202,236],[163,210],[128,173],[97,140],[70,110],[45,84],[23,60],[0,37]],$
+                    [[1,168]  ,[1,254]  ,[1,254]  ,[1,254] ,[1,254] ,[1,254],[1,254],[1,254]]]
+         *self.ord_height=[19,19,19,19,18,17,16,16]
          *self.orders=[15, 16, 17, 18, 19, 20, 21, 22]
+         
       end
     1:begin            ; G3xG4
          *self.map=[[[137,231],[80,164],[33,112],[0, 69],[1, 33]], $
@@ -90,7 +96,7 @@ END
 ;   Pre-defined extraction 
 ;******************************************************************************
 pro drip_extman::predefined_extraction,mode,dapname
-
+print, 'mode1 ', mode
 common drip_config_info, dripconf
 
 data=*self.data
@@ -114,6 +120,18 @@ instrument_mode = drip_getpar(header, 'INSTMODE')
 ; print, extraction_mode, instrument_mode
 
 ;  Figures out which grism mode we are in
+
+if(drip_getpar(header,'FILT1_S') eq 'G1+blk')then mode =2
+if(drip_getpar(header,'FILT1_S') eq 'G3+blk')then mode =3
+if((drip_getpar(header,'FILT4_S') eq 'grism5+blk')) then mode = 4
+if((drip_getpar(header,'FILT4_S') eq 'grism6+blk')) then mode = 5
+if((drip_getpar(header,'FILT1_S') eq 'G1+blk') and $
+   (drip_getpar(header,'FILT2_S') eq 'grism 2')) then mode = 0
+if((drip_getpar(header,'FILT1_S') eq 'G3+blk') and $
+   (drip_getpar(header,'FILT2_S') eq 'grism 4')) then begin
+   mode =1
+   ;print, 'mode  ',mode
+endif
 case mode of
    0: grmode_txt = 'G1xG2'
    1: grmode_txt = 'G3xG4'
@@ -122,7 +140,7 @@ case mode of
    4: grmode_txt = 'G5'
    5: grmode_txt = 'G6'
 endcase
-
+print, 'mode ',grmode_txt
 case instrument_mode of
     'STARE': begin
          c = [1]
@@ -217,7 +235,15 @@ for i=0,n_orders-1 do begin
     davg=avg-avg1
     extracted_spectrum=extracted_spectrum-davg
     *self.allwave[i]=wave
-    *self.allflux[i]=extracted_spectrum
+    
+    ; G5 and G6 have raw spectrum wavelength increasing right --> left
+    ; so we reverse 'allflux' for those modes
+
+    if (mode eq 4) OR (mode eq 5) then begin
+       *self.allflux[i]=reverse(extracted_spectrum)
+    endif else begin
+       *self.allflux[i]=extracted_spectrum
+    endelse   
 endfor
 end
 ;******************************************************************************
@@ -341,8 +367,31 @@ case extraction_mode of
                  ENDFOR
               end
 endcase
-              
-*self.extract=extracted_spectrum
+
+; G5 & G6 have raw spectra with lambda increasing right to left so
+; they must be reversed
+
+;  Figures out which grism mode we are in
+
+if(drip_getpar(header,'FILT1_S') eq 'G1+blk')then mode =2
+if(drip_getpar(header,'FILT1_S') eq 'G3+blk')then mode =3
+if((drip_getpar(header,'FILT4_S') eq 'grism5+blk')) then mode = 4
+if((drip_getpar(header,'FILT4_S') eq 'grism6+blk')) then mode = 5
+if((drip_getpar(header,'FILT1_S') eq 'G1+blk') and $
+   (drip_getpar(header,'FILT2_S') eq 'grism 2')) then mode = 0
+if((drip_getpar(header,'FILT1_S') eq 'G3+blk') and $
+   (drip_getpar(header,'FILT2_S') eq 'grism 4')) then begin
+   mode =1
+   ;print, 'mode  ',mode
+endif
+
+
+if (mode eq 4) OR (mode eq 5) then begin
+    *self.extract=reverse(extracted_spectrum)
+endif else begin
+    *self.extract=extracted_spectrum
+endelse
+
 end
 
 

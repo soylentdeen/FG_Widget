@@ -58,16 +58,13 @@ otmode=drip_getpar(header,'OTMODE')
 Nstacks=fix(drip_getpar(header,'OTSTACKS'))
 Nbufs=fix(drip_getpar(header,'OTNBUFS'))
 Nframes=s[3]
-print, 'size of data = ', s
-print, 'Nstacks = ', nstacks
-print, 'NBufs = ', nbufs
 ; add frames according to Ops Table MODE
 switch otmode of
     ; 1: begin
     'AD': begin ; AD=All Destructive
         ; get number of positions
         Npos=fix(floor(float(Nframes)/float(Nstacks)+0.01))
-        print,'Npos=',Npos
+        ;print,'Npos=',Npos
         if (Nframes mod Nstacks) gt 0 then drip_message, $
           ['drip_merge - adding stacks - AD -', $
            '  number of frames is not multiple of number of stacks',$
@@ -97,23 +94,11 @@ mode=drip_getpar(header,'INSTMODE')
 mode=strtrim(mode,2)
 ; run appropriate method
 switch mode of
-    'C2': begin ; 2 position chop
+    'C2':
+    'NAS': ;Grism Nod along slit
+    'C2NC2': begin ; 2 position chop
         ; get differences
         chopsub=fltarr(s[1],s[2],s[3]/2)
-        for i=0,s[3]-1,2 do begin
-            chopsub[*,*,i/2]=posdata[*,*,i]-posdata[*,*,i+1]
-        endfor
-        ; stack
-        if size(chopsub,/n_dimensions) gt 2 then stacked=total(chopsub,3) $
-          else stacked=chopsub
-        if keyword_set(chsub) then chsub=chopsub
-        break
-    end
-    'NAS': begin ; 2 position chop
-        ; get differences
-        chopsub=fltarr(s[1],s[2],s[3]/2)
-        print, s
-        print, size(chopsub)
         for i=0,s[3]-1,2 do begin
             chopsub[*,*,i/2]=posdata[*,*,i]-posdata[*,*,i+1]
         endfor
@@ -236,6 +221,20 @@ switch mode of
       stacked=posdata
   endelse
 endswitch
+
+; Now clean up "jailbar" array pattern noise
+stacked = drip_jbclean(stacked,header)
+
+;atv22,stacked
+
+; Convert pixel data to mega-electrons per second
+
+frmrate = drip_getpar(header,'FRMRATE')  ; get frame rate (Hz) from header
+eperadu = drip_getpar(header,'EPERADU')  ; get electrons/adu from header
+
+stacked = stacked*frmrate*eperadu/1e6    ; convert to millions of e/s
+
+;Remove third dimension from header
 
 return, stacked
 

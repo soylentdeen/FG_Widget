@@ -325,7 +325,7 @@ pro drip_pipeman::dispconf, event
 ; Setup: number of displays and list of possible data frames, get fonts
 dispn=size(*self.disp_sels,/n_elements)
 framelist=['None','Data','Cleaned','Badflags','Flatted','Stacked', $
-           'Undistorted','Merged','Coadded','Badmap','Masterflat']
+           'Undistorted','Merged','Coadded','Coadded Rot','Badmap','Masterflat']
 framen=size(framelist,/n_elements)
 common gui_os_dependent_values, largefont, smallfont
 ; Execute widget events
@@ -359,7 +359,7 @@ case event.id of
             (*self.dispconfstat).done=widget_button(row, value='Done', $
               event_pro='drip_eventhand', $
               uvalue={object:self, method:'dispconf'} )
-            (*self.dispconfstat).chancel=widget_button(row, value='Chancel', $
+            (*self.dispconfstat).chancel=widget_button(row, value='Cancel', $
               event_pro='drip_eventhand', $
               uvalue={object:self, method:'dispconf'} )
             ; set status

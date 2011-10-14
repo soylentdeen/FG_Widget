@@ -91,6 +91,16 @@ pro nas::reduce
 ; undistort
 ;*self.undistorted=drip_undistort(*self.stacked,*self.header,*self.basehead)
 *self.undistorted=*self.stacked
+
+; EXTRACTION GOES HERE
+;
+; *self.extracted = drip_spextract(*self.undistorted,*self.header)
+drip_spextract, *self.undistorted, *self.header
+
+
+; *self.extracted is a spectrum (1-D) that needs to be plotted and/or
+; saved so we send it to cw_xlpot instead of display.
+
 ; ADDED *self.flatted for IMAGECORELLATION IN MERGE
 ;*self.merged=drip_merge(*self.undistorted,*self.flatted,*self.header)
 *self.merged=*self.stacked

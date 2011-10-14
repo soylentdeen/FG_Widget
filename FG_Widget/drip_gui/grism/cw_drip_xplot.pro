@@ -589,9 +589,9 @@ if (uvalue.uval eq 'all') then begin
         widget_control,(*self.checkbox)[i],set_button=event.select
     endfor
 endif else begin
-    widget_control,(*self.checkbox)[0],set_button=0
-    ;self.chk_status(0)=0
-    (*self.chk_status)[fix(uvalue.uval)]=event.select
+widget_control,(*self.checkbox)[0],set_button=0
+;self.chk_status(0)=0
+(*self.chk_status)[fix(uvalue.uval)]=event.select
 endelse
 
 selected=0
@@ -601,15 +601,11 @@ for i=1,self.checkn-1 do begin
     endif
 endfor
 
+
 if keyword_set(selected) then begin
-    if n_elements(selected) gt 1 THEN BEGIN
-        *self.selected=selected[1:*];+(*self.orders)[0]
-    ENDIF else BEGIN
-        *self.selected=[max(*self.orders)-1]
-    ENDELSE
+    *self.selected=selected[1:*];+(*self.orders)[0]
 endif
 
-self->draw_multi
 end
 
 
@@ -1037,10 +1033,11 @@ pro drip_xplot::setdata, buffer=buffer,$
               xtitle=xtitle,ytitle=ytitle,title=title,cursormode=cursormode,$
               plotabsxrange=plotabsxrange,plotxrange=plotxrange,$
               reg=reg,mw=mw,tempflux=tempflux,tempwave=tempwave,$
-              extobj=extobj
+              extman=extman
+              
 
 
-if keyword_set(extobj) then self.extobj=extobj
+
 if keyword_set(buffer) then self.buffer= buffer
 if keyword_set(reg) then self.reg=reg
 if keyword_set(plotwin_wid) then self.plotwin_wid=plotwin_wid
@@ -1149,7 +1146,7 @@ end
 ;     DRAW_MULTI
 ;******************************************************************************
 
-pro drip_xplot::draw_multi, orders=orders, all = all
+pro drip_xplot::draw_multi, orders=orders, all = all, extobj = extobj
 
 orders=*self.orders
 if keyword_set(all) THEN BEGIN
@@ -1165,23 +1162,23 @@ colors = *self.colors
 nc=n_elements(colors)
 
 self->setdata, /no_oplotn
-n_color = n_elements(selected)-1
+n_color = selected[0]-min(orders)
 linecolor=colors[0,n_color]+256L*(colors[1,n_color]+256*colors[2,n_color])
 self->setdata,linecolor=linecolor
 
-wave=self.extobj->getdata(wave_num=selected[0])
-flux=self.extobj->getdata(flux_num=selected[0])
+wave=extobj->getdata(wave_num=selected[0])
+flux=extobj->getdata(flux_num=selected[0])
 self->draw, wave, flux
 
 for i = 1, n_elements(selected)-1 DO BEGIN
     self->setdata, /oplotn
-    n=i
+    n=selected[i]-min(orders)
     linecolor=colors[0,(n mod nc)]$
         +256L*(colors[1,(n mod nc)]$
         +256L*colors[2,(n mod nc)])
     self->setdata,linecolor=linecolor
-    wave=self.extobj->getdata(wave_num=selected(i))
-    flux=self.extobj->getdata(flux_num=selected(i))
+    wave=extobj->getdata(wave_num=selected(i))
+    flux=extobj->getdata(flux_num=selected(i))
     self->draw,wave,flux,/oplot
 ENDFOR
 self->setdata,xtitle='Wavelength (!7l!Xm)'
@@ -1301,23 +1298,30 @@ self.cf_obj=obj_new('drip_xplot_clickfit',self)
 
 end
 
+;*********************************************************
+;     remove_checkboxes
+;*********************************************************
+
+
 pro drip_xplot::remove_checkboxes
 
 if (self.check_base[1] ne 0) THEN $
     widget_control, self.check_base[1], /destroy
 
 if (self.check_base[2] ne 0) THEN $
-    widget_control, self.check_base[2], /destroy
+    widget_control, self.check_base[2], /destory
 
-self.check_base[1] = 0
-self.check_base[2] = 0
+self.check_base[1]=0
+self.check_base[2]=0
+
 end
+
 
 ;**********************************************************
 ;     add_checkboxes
 ;**********************************************************
 
-pro drip_xplot::add_checkboxes, orders=orders, extobj=extobj
+pro drip_xplot::add_checkboxes, orders=orders
 
 if keyword_set(orders) THEN BEGIN
     if (self.check_base[1] ne 0) THEN $
@@ -1344,7 +1348,7 @@ if keyword_set(orders) THEN BEGIN
 
     self.check_base[2] = chck_base     ; register the checkbox base
 
-    self->setdata,checkbox=checkbox,orders=orders,extobj=extobj
+    self->setdata,checkbox=checkbox,orders=orders
 ENDIF
 
 END
@@ -1460,7 +1464,6 @@ struct={drip_xplot, $
         $                       ;registry to hold values for x/y/zoom
         $;objects
         analobj:objarr(20),$    ;corresponding anal objects
-        extobj:obj_new(),$      ;current extraction manager object
         wc_obj:obj_new(),$      ;wave callibration object
         cf_obj:obj_new(),$      ;click fit object
         mw:obj_new()$           ;message window

@@ -36,6 +36,9 @@
 
 function drip_nonlin, data, coeff, header, basehead
 ; error check
+drip_message, 'WARNING: pixel-to-pixel linearity correction is not yet available'
+return,data
+
 sd=size(data)
 sc=size(coeff)
 ; Do the linearity correction only if non-lin data cube present.
@@ -51,7 +54,7 @@ if sc[0] gt 2 then begin
             endfor
         endfor
     endfor
-    drip_message, 'Done with data linearity correction'
+    ; drip_message, 'Done with data linearity correction'
     endif
     if sd[0] eq 2 then begin
     linearized=fltarr(sd[1],sd[2],/nozero)   
@@ -60,7 +63,7 @@ if sc[0] gt 2 then begin
         ;linearized[i,j] = POLY(data[i,j], coeff[i,j,0:degree])
         endfor
     endfor
-    drip_message, 'Done with faltfield linearity correction'
+    ; drip_message, 'Done with flatfield linearity correction'
     endif
 endif else begin
     linearized=data

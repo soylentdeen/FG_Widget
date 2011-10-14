@@ -62,6 +62,7 @@ endif
 print,'ConfFileName=',conffilename
 ; initialize config_info (save filename in config[0])
 common drip_config_info, dripconf, drip_errproc
+drip_errproc = 0
 dripconf=[conffilename]
 ; read configuration file -> config (array of strings)
 if strlen(conffilename) gt 0 then begin

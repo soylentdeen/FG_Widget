@@ -63,15 +63,23 @@ endif
 mode=strtrim(mode,2)
 drip_message,'new pipe, mode=<'+mode+'>'
 case mode of
-    'C2': pipe=obj_new('c2',filelist)
+    'C2': begin
+          if (uint(sxpar(header, 'C2NC2')) eq 1) then begin
+              pipe=obj_new('c2nc2',filelist)
+              
+          endif else begin
+              pipe=obj_new('c2',filelist)
+          endelse
+          end    
     'C2N': pipe=obj_new('c2n',filelist)
     'C2ND': pipe=obj_new('c2nd',filelist)
     'C3D': pipe=obj_new('c3d',filelist)
+    'C2NC2':pipe=obj_new('c2nc2',filelist)
     'CM': pipe=obj_new('cm',filelist)
     'MAP': pipe=obj_new('map',filelist)
     'STARE': pipe=obj_new('stare',filelist)
+    'NAS': pipe=obj_new('nas',filelist)
     'TEST': pipe=obj_new('test',filelist)
-    'NAS' : pipe=obj_new('nas', filelist)
     else: pipe=obj_new('drip',filelist)
 endcase
 return,pipe

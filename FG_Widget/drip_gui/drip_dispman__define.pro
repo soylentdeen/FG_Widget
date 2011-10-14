@@ -74,6 +74,7 @@ end
 
 pro drip_dispman::raisedisp, disp
 if disp ne self.dispinfocus then begin
+
    ; deactivate analysis widgets
    widget_control, self.upwidget, update=0
    ; lower display
@@ -258,5 +259,6 @@ struct={drip_dispman, $
        closeup:0L , $          ; widget id of closeup widget
        closeup_wid: 0B, $      ; window id of closeup window
        ; anal object widgets variables
-       upwidget:0L}            ; base widget for making analysis objects
+       upwidget:0L ,$          ; base widget for making analysis objects
+       inherits drip}          ; need some drip info        
 end

@@ -36,8 +36,24 @@
 ;   Modified:     Marc Berthoud, Palomar, September 2007
 ;                 Added use of RA and DEC for noding and dithering
 ;   Modified:     Luke Keller, Ithaca College June 2010
-;                 Added option to coadd using cross correlation of frames
-
+;                 Added option to coadd using cross correlation of
+;                 frames
+;   Modifed:      Marc Berthoud, Ithaca College, July 2010
+;                 Added use of border and resize variables to sample
+;                 the final result back down to 256x256 pixels
+;   Modifed:      Luke Kelelr, Ithaca College, May 2011
+;                 Added dithering to C2 and C2N modes since they are
+;                 used in flights in place of C2ND and C2D.
+;                 Added rotation of field in coadd step using SKY_ANGL
+;                 data from FITS headers.
+;                 Fixed S/N calculation in POINT object so it works 
+;                 on pixel data rather than e-/s.
+;                 Added test for NOD-MATCH-CHOP mode (parallel nod and
+;                 chop with equal amplitudes. When this mode is detected
+;                 DRIP bypasses the 'MERGE' step in the pipeline.
+;   Modifed:      Luke Kelelr, Ithaca College, June 2011
+;                 Added 'C2NC2' mode
+;               
 ;******************************************************************************
 ;     DRIP_COADD - Merges data frames
 ;******************************************************************************
@@ -45,14 +61,27 @@
 function drip_coadd, newdata, coadded, header, basehead, first=first, n=n
 
 ; error check
+
+mode=drip_getpar(header,'INSTMODE')
+if (uint(sxpar(header, 'C2NC2')) eq 1) then mode='C2NC2'
+
+mode=strtrim(mode,2)
+
 s=size(newdata)
 if s[0] ne 2 then begin
-    drip_message, 'drip_coadd - invalid new data array - aborting',/fatal
-    return, newdata
+    if (mode eq 'C2NC2') then begin ; Check for correct C2NC2 data format
+      if s[0] ne 3 then begin
+        ; C2NC2 data are bubes of 8 frames
+        drip_message, 'drip_coadd - invalid C2NC2 data - aborting', /fatal
+      endif   
+    endif else begin
+      drip_message, 'drip_coadd - invalid new data array - aborting',/fatal
+      return, newdata
+    endelse
 endif
 cs=size(coadded)
 if cs[0] ne 2 then begin
-    drip_message, 'drip_coadd - invalid or no previous coadded array - using blank image'
+    drip_message, 'drip_coadd - no previous coadded array - using blank image'
     coadded=newdata
     coadded[*,*]=0.0
 endif
@@ -63,35 +92,213 @@ hs=size(basehead)
 if (hs[0] ne 1) or (hs[2] ne 7) then drip_message, $
   'drip_coadd - invalid base header'
 ; initialize variables
-newcoadded=fltarr(s[1],s[2])
-mode=drip_getpar(header,'INSTMODE')
-mode=strtrim(mode,2)
+newcoadded=fltarr(s[1],s[2])  
+
+odata = newdata ; Preserve original data
+
+; Get data for rotation of field using SKY_ANGLE FITS keyword
+skyangle=drip_getpar(header,'SKY_ANGL') ; GET SKY ANGLE FOR ROTATION OF FIELD; header
+skyangle=strtrim(skyangle,2)
+rot_angle = 180. - skyangle
+
+resize=2.0 ;2
+border=128 ;128
 ; run appropriate method
 switch mode of
     'C2': ; 2 position chop
     'C2N':begin ; 2 position chop with nod
-        if keyword_set(first) then newcoadded=newdata $
-        else begin
-        cormerge=drip_getpar(header,'CORMERGE') ; Keyword replace flag for merge method:
-                                               ; CORMERGE = 'Y' then use
-                                               ; cross-correlation
-                                               ; CORMERGE = 'N' then use
-                                               ; nominal nod and chop positions
-        ; Use cross correlation to align images                                      
-        if (cormerge eq 'COR' OR cormerge eq 'CENT') then begin 
-           drip_message,'drip_coadd - Using cross-correlation to coadd frames'
-           cmat=correl_images(coadded, newdata, xoff=0, yoff=0, xshift=20, yshift=20)
-           corrmat_analyze, cmat, xopt, yopt, XOFF_INIT=0, YOFF_INIT=0           
-           newcoadded=coadded+shift(newdata,xopt,yopt)
-        ;endif
-        ;if cormerge eq 'CENT' then begin ; Use centroids to align images
-        ;   ;centdata = odata[*,0:254]
-        ;   origin=find_peak_all(odata)
-        ;   cormerged=origin
-        ;   newcoadded=coadded+
-        endif else newcoadded=coadded+newdata
+
+        xdither = 0.0
+        ydither = 0.0
+        dithermode = sxpar(header,'DITHERS')
+        ; print, 'DITHER:  ',dithermode
+        if (uint(sxpar(header,'DITHERS')) eq 1) then begin
+            ; Get chop coord system: 0=SIRF, 1=TARF, 2=ERF
+            dcoordsys=drip_getpar(header,'DITHERCS')
+            dcoordsys=strtrim(dcoordsys,2)
+            xdither = drip_getpar(header,'DITHERX')
+            xdither = float(strtrim(xdither,2))
+            ydither = drip_getpar(header,'DITHERY')
+            ydither = float(strtrim(ydither,2))
+            if (dcoordsys eq 2) then begin
+              erf_xdither = (xdither*cos(skyangle) + ydither*sin(skyangle))
+              erf_ydither = (ydither*cos(skyangle) - xdither*sin(skyangle))
+              xdither = erf_xdither
+              ydither = erf_ydither
+            endif
+            ; print,'DITHERX:  ',xdither,'  DITHERY:  ',ydither
+        endif
+         
+        if keyword_set(first) then begin   
+            ; cut border
+            newcoadded=newdata ; [border:s[1]-border-1,border:s[2]-border-1]
+            ; resize image
+            ;newrez=rebin(newcut,(s[1]-2*border)/resize,(s[2]-2*border)/resize)
+            newcoadded = rot(newcoadded, rot_angle, cubic=-0.5,missing=0) ; Rotate new data
+            drip_message, ['Rotated frame to North = UP using SKY_ANGL = ', skyangle]
+            
+        endif else begin
+            ;** add frames (maybe cross-correlate)
+            ; Keyword replace flag for merge method:
+            ;  CORMERGE = 'COR' then use cross-correlation
+            ;  CORMERGE = 'CENT' then use centroid
+            ;  CORMERGE = 'N' then use nominal nod and chop positions
+            
+            cormerge=drip_getpar(header,'CORMERGE')
+            
+            ; Use cross correlation to align images
+            ;
+            ; *********** reduce merged to 256x256 *************
+            ; remove border
+            ;newcut=newdata[border:s[1]-border-1,border:s[2]-border-1]
+            
+            newrez=newdata[border:s[1]-border-1,border:s[2]-border-1]
+            newcoadd = coadded[border:s[1]-border-1,border:s[2]-border-1]
+            ;atv22,newcoadd
+            
+            newrez = rot(newrez, rot_angle, cubic=-0.5, missing=0) ; Rotate new data using SKY_ANGL
+            rot_newdata = rot(newdata, rot_angle, cubic=-0.5, missing=0)
+            drip_message, ['Rotated frame to North = UP using SKY_ANGL = ', skyangle]
+            
+            ; resize image
+            ;newrez=rebin(newcut,(s[1]-2*border)/resize,(s[2]-2*border)/resize) ;
+                                                   
+            if (cormerge eq 'COR' ) then begin ; OR cormerge eq 'CENT' 
+               
+               xyshift=40
+               ;xoff=xdither
+               ;yoff=ydither
+               
+               ;newrez = rot(newrez, rot_angle, cubic=-0.5, missing=0) ; Rotate new data using SKY_ANGL
+               
+               ;drip_message, ['Rotated frame to North = UP using SKY_ANGL = ', skyangle]
+               
+               drip_message,'drip_coadd - Using cross-correlation to coadd frames'
+               cmat=correl_images(newcoadd, newrez, xoff=xdither, yoff=ydither, xshift=xyshift, yshift=xyshift, $
+                  reduction=8) ;was xshift=20, yshift =20
+               corrmat_analyze, cmat, xopt, yopt, XOFF_INIT=xdither, YOFF_INIT=ydither
+               ;print,'CMAT1:  ',xopt,yopt
+               xopt2=xopt
+               yopt2=yopt
+               xyshift=10
+               cmat=correl_images(newcoadd, newrez, xoff=xopt2, yoff=yopt2, xshift=xyshift, yshift=xyshift)
+               corrmat_analyze, cmat, xopt, yopt, XOFF_INIT=xopt2, YOFF_INIT=yopt2
+               ;print,'CMAT2:  ',xopt,yopt
+                         
+               newshift=shift(rot_newdata,xopt,yopt) ;newrez
+            endif
+            if cormerge eq 'CENT' then begin ; Use centroids to align images
+               
+               ;newrez = rot(newrez, rot_angle, cubic=-0.5,missing=0) ; Rotate new data
+               
+               
+               drip_message,'drip_coadd - Using centroid to coadd frames'
+               ;centdata = odata[*,0:254]
+               
+               ;newshift=find_peak_all(newrez)   ; was newdata
+               
+               shift_coords = drip_peakfind(newcoadd,newrez,fwhm=8.0,npeaks=1,THRESH=15, TSTEP=TSTEP) ;newrez
+               ;print,shift_coords
+               ;print,round(shift_coords[0]), round(shift_coords[1])
+               newshift = shift(rot_newdata,shift_coords[0],shift_coords[1])  ; newrez
+               ;newshift=origin
+               ;cormerged=origin
+               ;newcoadded=coadded+r
+            endif
+            if cormerge eq 'N' then begin;  ne 'CENT' and cormerge ne 'COR' then begin
+               
+               newshift=shift(rot_newdata,xdither,ydither)
+               print, 'Shift/register using HK and DITHER'
+               
+               ;newshift = rot(newshift, rot_angle, cubic=-0.5,missing=0) ; Rotate new data
+               ;newrez = rot(newrez,rot_angle,cubic=-0.5)
+               ;drip_message, ['Rotated frame to North = UP using SKY_ANGL = ', skyangle]
+ 
+            endif
+            
+            ;** coadd to existing data    ; 
+            ;if keyword_set(first) then begin
+            ;   newcoadded=newrez ; just use unshifted data
+            ;endif else begin
+            
+            ;newshift_rot = rot(newshift, rot_angle, cubic=-0.5) ; Rotate new data
+            ;drip_message, ['Rotated frame to North = UP using SKY_ANGL = ', skyangle]
+            if (keyword_set(n) eq 1) then begin
+                newcoadded=(coadded*(n)+newshift)/(n+1) ; mean
+            endif else begin
+                newcoadded=(coadded+newshift)/2
+            endelse
+            
         endelse
         break
+    end
+    'C2NC2': begin ; 2 position large asymmetric chop with large offset
+        
+        ; Incorporate dither as first guess for registration of images
+        xdither = 0.0
+        ydither = 0.0
+        dithermode = sxpar(header,'DITHERS')
+        ; print, 'DITHER:  ',dithermode
+        if (uint(sxpar(header,'DITHERS')) eq 1) then begin
+            ; Get chop coord system: 0=SIRF, 1=TARF, 2=ERF
+            dcoordsys=drip_getpar(header,'DITHERCS')
+            ditherp = sxpar(header,'DITHERP') 
+            xdither = drip_getpar(header,'DITHERX')
+            xdither = float(strtrim(xdither,2))
+            ydither = drip_getpar(header,'DITHERY')
+            ydither = float(strtrim(ydither,2))
+            if (dcoordsys eq 2) then begin
+              erf_xdither = (xdither*cos(skyangle) + ydither*sin(skyangle))
+              erf_ydither = (ydither*cos(skyangle) - xdither*sin(skyangle))
+              xdither = erf_xdither
+              ydither = erf_ydither
+            endif
+            ; print,'DITHERX:  ',xdither,'  DITHERY:  ',ydither
+        endif
+        
+        ; Data will come from merge in a cube mergestack
+          
+        ; Remove border and resize       
+        newrez=newdata[border:s[1]-border-1,border:s[2]-border-1,*]
+        
+        ; Subtract ON-OFF
+        
+        sky_sub = newrez[*,*,0]-newrez[*,*,1]            ; Use for cross-corr
+        sky_sub_data = newdata[*,*,0] - newdata[*,*,1]   ; Use for shift
+        
+        if keyword_set(first) then begin   
+            
+            newcoadded = rot(sky_sub_data, rot_angle, cubic=-0.5,missing=0) ; Rotate new data
+            drip_message, ['Rotated frame to North = UP using SKY_ANGL = ', skyangle]
+            
+        endif else begin
+        
+            newcoadd = coadded[border:s[1]-border-1,border:s[2]-border-1]
+            
+            sky_sub = rot(sky_sub, rot_angle, cubic=-0.5,missing=0) ; Rotate new data
+            sky_sub_data = rot(sky_sub_data, rot_angle, cubic=-0.5,missing=0)
+            xyshift=30
+     
+            cmat=correl_images(newcoadd[5:250,5:250], sky_sub[5:250,5:250], xoff=0, yoff=0, xshift=xyshift, $
+                   yshift=xyshift, reduction=4)
+            corrmat_analyze, cmat, xopt, yopt, XOFF_INIT=0, YOFF_INIT=0
+                
+            xopt2=xopt
+            yopt2=yopt
+            xshift=10
+               
+            cmat=correl_images(newcoadd[5:250,5:250], sky_sub[5:250,5:250], xoff=xopt2, yoff=yopt2, xshift=xyshift, yshift=xyshift)
+            corrmat_analyze, cmat, xopt, yopt, XOFF_INIT=xopt2, YOFF_INIT=yopt2
+            ;print,xopt,yopt
+            newshift=shift(sky_sub_data[*,*],xopt,yopt)                                                      
+            
+            if (keyword_set(n) eq 1) then begin
+                newcoadded=(coadded*(n-1)+newshift)/(n) ; mean
+            endif else begin
+                newcoadded=(coadded+newshift)/2
+            endelse   
+        endelse
+      break
     end
     'C2ND': ; C2N with Dither
     'C3D':begin ; 3 position chop with Dither
@@ -120,23 +327,21 @@ switch mode of
         telescope=drip_getpar(header,'TELESCOP') ; to determine plate scale
         if telescope eq 'PIXELS' then arcsecpix=1.0
         
-        raoff=2.0*3600.0*raoff/arcsecppix
-        decoff=2.0*3600.0*decoff/arcsecppix
+        raoff=resize*3600.0*raoff/arcsecppix
+        decoff=resize*3600.0*decoff/arcsecppix
         ; shift image (raoff left, decoff up)    
         
         ;print,'raoff=',raoff,' decoff=',decoff
         ;newshift=shift(newdata,-raoff,decoff)
         
         ;** shift image from DITHERX and DITHERY (remember 2x subsampled to match coadd frame format)
-        ditherx=2*(drip_getpar(header,'DITHER_X'))
-        dithery=2*(drip_getpar(header,'DITHER_Y'))
+        ditherx=resize*(drip_getpar(header,'DITHER_X'))
+        dithery=resize*(drip_getpar(header,'DITHER_Y'))
         print,'ditherx=',ditherx,' dithery=',dithery
         newshift=shift(newdata,-ditherx,-dithery)
-        ;
-        
         ; add image to last coadded images
         if keyword_set(first) then newcoadded=newshift $
-          else newcoadded=coadded+newshift
+          else newcoadded=(coadded+newshift)/2  ; Save and display mean
         break
     end
     'CM':begin ; multi position chop
@@ -164,7 +369,7 @@ switch mode of
     end
     'STARE':begin ; STARE
         if keyword_set(first) then newcoadded=newdata $
-          else newcoadded=newdata+coadded
+          else newcoadded=newrez+coadded ; newdata-->newrez
         break
     end
     'TEST':begin ; TEST
@@ -201,7 +406,7 @@ switch mode of
             ; full nodding
             'NOD': begin ; use n, chop according to ABBA
                 ; get nod distances
-                noddist=float(drip_getpar(header,'NODDIST'))
+                noddist=float(drip_getpar(header,'NODAMP'))
                 nodang=float(drip_getpar(header,'NODANGLE'))
                 noddist=float(noddist)
                 nodang=!pi/180*nodang
@@ -231,6 +436,9 @@ switch mode of
     endelse
 endswitch
 
-return, newcoadded
+newdata = odata ; Set newdata back to original since it is a pointer
+                ; to data used elsewhere (e.g. in drip_merge)
+
+return, newcoadded  ; newcoadded
 
 end
