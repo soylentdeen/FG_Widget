@@ -168,7 +168,7 @@ case event.id of
             (*self.autoconfstat).done=widget_button(row, value='Done', $
               event_pro='drip_eventhand', $
               uvalue={object:self, method:'autoconf'} )
-            (*self.autoconfstat).chancel=widget_button(row, value='Chancel', $
+            (*self.autoconfstat).chancel=widget_button(row, value='Cancel', $
               event_pro='drip_eventhand', $
               uvalue={object:self, method:'autoconf'} )
             ; set status
@@ -221,7 +221,7 @@ case event.id of
         endif
         break
     end
-    ; Chancel: close window, reset status
+    ; Cancel: close window, reset status
     (*self.autoconfstat).chancel:begin
         if (*self.autoconfstat).stat ne 0 then begin
             widget_control, event.top, /destroy

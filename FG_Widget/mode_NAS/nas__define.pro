@@ -94,8 +94,8 @@ pro nas::reduce
 
 ; EXTRACTION GOES HERE
 ;
-; *self.extracted = drip_spextract(*self.undistorted,*self.header)
-drip_spextract, *self.undistorted, *self.header
+*self.extracted = drip_spextract(*self.undistorted,*self.header)
+;drip_spextract, *self.undistorted, *self.header
 
 
 ; *self.extracted is a spectrum (1-D) that needs to be plotted and/or

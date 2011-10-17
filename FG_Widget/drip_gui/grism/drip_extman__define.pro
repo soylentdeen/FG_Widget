@@ -117,8 +117,14 @@ extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
 
 case mode of
-   0: grmode_txt = 'G1xG2'
-   1: grmode_txt = 'G3xG4'
+   0: BEGIN
+          grmode_txt = 'G1xG2'
+          data=rot(data, -90.0)
+      END
+   1: BEGIN 
+          grmode_txt = 'G3xG4'
+          data=rot(data, -90.0)
+      END
    2: grmode_txt = 'G1'
    3: grmode_txt = 'G3'
    4: grmode_txt = 'G5'
@@ -177,7 +183,8 @@ for i=0,n_orders-1 do begin
                         ;print, k*segment_size
                         ;print, (k+1)*segment_size-1
                         piece = sub_array[k*segment_size:(k+1)*segment_size-1,*]
-                        collapsed = total(piece,1)
+                        collapsed = total(piece,1, /NAN)
+                        ;plot, collapsed
                         
                         positive = where(collapsed ge 0)
                         xcoord = findgen(n_elements(collapsed))
@@ -199,15 +206,16 @@ for i=0,n_orders-1 do begin
                      for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
                         filter = lorentz(ycoord, y[k], 3.0)
                         extracted_spectrum[k] += total(sub_array[k,*]* $
-                                                       filter/max(filter))
+                                                       filter/max(filter), /NAN)
                      ENDFOR
                   ENDFOR
+                  print, 'GUI_Extract: ', extracted_spectrum
               END
       'FULLAP' : begin
                  ; Full Aperture Extraction
                  extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
                  for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
-                     extracted_spectrum[k] = total(sub_array[k,*])
+                     extracted_spectrum[k] = total(sub_array[k,*],/NAN)
                  ENDFOR
               end
     endcase
@@ -222,6 +230,7 @@ for i=0,n_orders-1 do begin
     ; G5 and G6 have raw spectrum wavelength increasing right --> left
     ; so we reverse 'allflux' for those modes
 
+    ;print, extracted_spectrum
     if (mode eq 4) OR (mode eq 5) then begin
        *self.allflux[i]=reverse(extracted_spectrum)
     endif else begin
@@ -301,6 +310,12 @@ case extraction_mode of
                           c = [1, -1]
                       END
                   endcase
+
+                  ;
+                  ; HARDWIRED FOR STARE MODE
+                  c = [1]
+                  ;
+
                   extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
                   ;original = sub_array
                   for j = 0, n_elements(c)-1 DO BEGIN
@@ -316,7 +331,7 @@ case extraction_mode of
                         print, i*segment_size
                         print, (i+1)*segment_size-1
                         piece = sub_array[i*segment_size:(i+1)*segment_size-1,*]
-                        collapsed = total(piece,1)
+                        collapsed = total(piece,2)
                         
                         positive = where(collapsed ge 0)
                         xcoord = findgen(n_elements(collapsed))

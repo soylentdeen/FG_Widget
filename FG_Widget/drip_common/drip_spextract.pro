@@ -137,7 +137,7 @@ case instrument_mode of
          c = [1]
     END
     'NAS': begin
-         c = [1, -1]
+         c = [-1, 1]
     END
 endcase
 
@@ -189,7 +189,7 @@ for i=0,n_orders-1 do begin
                                 ;print, k*segment_size
                                 ;print, (k+1)*segment_size-1
                 piece = sub_array[k*segment_size:(k+1)*segment_size-1,*]
-                collapsed = total(piece,1)
+                collapsed = total(piece,2, /NAN)
                 
                 positive = where(collapsed ge 0)
                 xcoord = findgen(n_elements(collapsed))
@@ -211,15 +211,16 @@ for i=0,n_orders-1 do begin
              for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
                 filter = lorentz(ycoord, y[k], 3.0)
                 extracted_spectrum[k] += total(sub_array[k,*]* $
-                                               filter/max(filter))
+                                               filter/max(filter), /NAN)
              ENDFOR
           ENDFOR
+          ;print, asdf
        END
        'FULLAP' : begin
                                 ; Full Aperture Extraction
           extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
           for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
-             extracted_spectrum[k] = total(sub_array[k,*])
+             extracted_spectrum[k] = total(sub_array[k,*], /NAN)
           ENDFOR
        end
     endcase
@@ -259,7 +260,7 @@ if (mode eq 4) OR (mode eq 5) then begin
 endif else begin
    extracted = [[allwave],[allflux],[ext_orders]]
 endelse
-
+print, 'Extracted Spectrum : ', extracted
 return, extracted
 
 end

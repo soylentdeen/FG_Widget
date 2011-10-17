@@ -701,14 +701,14 @@ if event.type eq 1 then begin
         self.reg[*,1] = xy[0:1]
         case self.cursormode of
 
-            'XZoom': self.plotxrange = [min(self.reg[0,*],MAX=max),max]
+            'XZoom': self.plotxrange = [min(self.reg[0,*],MAX=max, /NAN),max]
 
-            'YZoom': self.plotyrange = [min(self.reg[1,*],MAX=max),max]
+            'YZoom': self.plotyrange = [min(self.reg[1,*],MAX=max, /NAN),max]
 
             'Zoom': begin
 
-                self.plotxrange = [min(self.reg[0,*],MAX=max),max]
-                self.plotyrange = [min(self.reg[1,*],MAX=max),max]
+                self.plotxrange = [min(self.reg[0,*],MAX=max, /NAN),max]
+                self.plotyrange = [min(self.reg[1,*],MAX=max, /NAN),max]
 
             end
 
@@ -727,8 +727,8 @@ if event.type eq 1 then begin
                     box_xy[1,i]=indx
                 endfor
                 
-                self.cf_obj->setdata, box_xy=[[min(box_xy[0,*],max=maxx),$
-                                               min(box_xy[1,*],max=maxy)],$
+                self.cf_obj->setdata, box_xy=[[min(box_xy[0,*],max=maxx, /NAN),$
+                                               min(box_xy[1,*],max=maxy, /NAN)],$
                                               [maxx,maxy]]
                 self.cf_obj->findVal
             end
@@ -746,8 +746,8 @@ if event.type eq 1 then begin
                     box_xy[1,i]=indx
                 endfor
                 
-                self.cf_obj->setdata, box_xy=[[min(box_xy[0,*],max=maxx),$
-                                               min(box_xy[1,*],max=maxy)],$
+                self.cf_obj->setdata, box_xy=[[min(box_xy[0,*],max=maxx, /NAN),$
+                                               min(box_xy[1,*],max=maxy, /NAN)],$
                                               [maxx,maxy]]
                 self.cf_obj->basefit
                 
@@ -913,7 +913,6 @@ device,decomposed=1
 ;for ps plot ignoring for now.
 color=self.color
 if color eq 1 then color=(keyword_set(PS) eq 1) ? 0:1
-
 if keyword_set(PS) then begin
 
     plot,*self.allwave[0],*self.allflux[0],/XSTY,/YSTY,$
@@ -959,6 +958,7 @@ for i=0,self.oplotn do begin
       THICK=self.thick,PSYM=10
 endfor
 
+print, 'uiop'
 wset, self.plotwin_wid
 erase
 device, copy=[0,0,self.plotsize[0],self.plotsize[1],0,0,$
