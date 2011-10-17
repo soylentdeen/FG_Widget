@@ -423,8 +423,8 @@ pro drip::getcal
 ; read bad pixel map
 
 ;Find mode of grism
-print, drip_getpar(*self.basehead,'FILT1_S')
-print, drip_getpar(*self.basehead,'FILT2_S')
+print, 'Filter 1 :', drip_getpar(*self.basehead,'FILT1_S')
+print, 'Filter 2 :', drip_getpar(*self.basehead,'FILT2_S')
 if(drip_getpar(*self.basehead,'FILT1_S') eq 'G1+blk')then mode =2
 if(drip_getpar(*self.basehead,'FILT1_S') eq 'G3+blk')then mode =3
 if((drip_getpar(*self.basehead,'FILT4_S') eq 'grism5+blk')) then mode = 4

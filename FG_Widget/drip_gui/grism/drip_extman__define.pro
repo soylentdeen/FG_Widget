@@ -116,22 +116,6 @@ header = self.dataman->getelement(dapname,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
 
-; print, self.dapsel_name
-; print, extraction_mode, instrument_mode
-
-;  Figures out which grism mode we are in
-
-if(drip_getpar(header,'FILT1_S') eq 'G1+blk')then mode =2
-if(drip_getpar(header,'FILT1_S') eq 'G3+blk')then mode =3
-if((drip_getpar(header,'FILT4_S') eq 'grism5+blk')) then mode = 4
-if((drip_getpar(header,'FILT4_S') eq 'grism6+blk')) then mode = 5
-if((drip_getpar(header,'FILT1_S') eq 'G1+blk') and $
-   (drip_getpar(header,'FILT2_S') eq 'grism 2')) then mode = 0
-if((drip_getpar(header,'FILT1_S') eq 'G3+blk') and $
-   (drip_getpar(header,'FILT2_S') eq 'grism 4')) then begin
-   mode =1
-   ;print, 'mode  ',mode
-endif
 case mode of
    0: grmode_txt = 'G1xG2'
    1: grmode_txt = 'G3xG4'
@@ -140,7 +124,6 @@ case mode of
    4: grmode_txt = 'G5'
    5: grmode_txt = 'G6'
 endcase
-print, 'mode ',grmode_txt
 case instrument_mode of
     'STARE': begin
          c = [1]
@@ -155,7 +138,7 @@ avg=0
 for i=0,n_orders-1 do begin
     ; calculates the slope
     pos = where( (orders eq (*self.orders)[i]) and (grism_mode eq grmode_txt) )
-    print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
+    ;print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
     slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
     ;xvalues
     xvalue=findgen(map[1,i,1]-map[0,i,1])

@@ -85,6 +85,7 @@ if keyword_set(*data) then begin
     orders=self.extman->getdata(/orders)    
      
     self.xplot->add_checkboxes, orders=orders
+    print, "predefined extraction orders :", orders
     self.xplot->draw_multi, orders=orders, /all, extobj=self.extman
     
 
@@ -534,8 +535,9 @@ dispinfocus=self.dispman->getdata(/dispinfocus)
 data=dispinfocus->getdata(/dataraw)
 dapname=dispinfocus->getdata(/dapname) 
 header = self.dataman->getelement(dapname,'HEADER')
-
+print, 'Outside:'
 if (total(*data) ne 0.0) then begin   ; Allows a pipeline reset without initiating extract
+print, 'Inside'
 
      ; Determine what grism mode we're extacting
    
@@ -565,6 +567,7 @@ if((drip_getpar(header,'FILT1_S') eq 'G3+blk') and $
         orders=self.extman->getdata(/orders)
          
         self.xplot->add_checkboxes, orders=orders
+        print, 'Orders in analman_extract: ', orders
         self.xplot->draw_multi, orders=orders, /all, extobj=self.extman
         
     endif

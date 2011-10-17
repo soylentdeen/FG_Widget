@@ -1170,7 +1170,9 @@ wave=extobj->getdata(wave_num=selected[0])
 flux=extobj->getdata(flux_num=selected[0])
 self->draw, wave, flux
 
+print, 'xplot draw_multi : ', selected
 for i = 1, n_elements(selected)-1 DO BEGIN
+    print, i
     self->setdata, /oplotn
     n=selected[i]-min(orders)
     linecolor=colors[0,(n mod nc)]$
@@ -1179,6 +1181,7 @@ for i = 1, n_elements(selected)-1 DO BEGIN
     self->setdata,linecolor=linecolor
     wave=extobj->getdata(wave_num=selected(i))
     flux=extobj->getdata(flux_num=selected(i))
+    ;print, wave, flux
     self->draw,wave,flux,/oplot
 ENDFOR
 self->setdata,xtitle='Wavelength (!7l!Xm)'
