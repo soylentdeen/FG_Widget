@@ -28,8 +28,7 @@ pro drip_extman::setmap,mode
 ;         3 - G3
 ;         4 - G5
 ;         5 - G6
-
-;  This case statement should actually come from the header file or master flat.
+;;  This case statement should actually come from the header file or master flat.
 ; 
 case mode of
     0:begin            ; G1xG2
@@ -103,169 +102,182 @@ data=*self.data
 self->setmap,mode
 map=*self.map
 
+*self.extract = self.dataman->getelement(dapname,'EXTRACTED')
+*self.orders = (*self.extract)[[uniq((*self.extract)[*,2])],2]
+;if (n_elements(*self.orders) gt 1) THEN BEGIN
+    for i = 0, n_elements(*self.orders)-1 DO BEGIN
+        bm = where((*self.extract)[*,2] eq (*self.orders)[i])
+        *self.allflux[i]=(*self.extract)[bm,1]
+        *self.allwave[i]=(*self.extract)[bm,0]
+    ENDFOR
+;ENDIF ELSE BEGIN
+;    *self.allflux[i] = *
+;ENDELSE
+;print, pdfx_asdf
+;for i = 0, n_elements(
 ;readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  
 ; need to modify to include polynomial fits
 ;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, $
 ;      lam_high, FORMAT='A,I,F,F', comment = '#', delimiter=','
 
-readcol, 'drip_gui/grism/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, $
-    Coeff_2, Coeff_3, FORMAT='A,I,F,F,F,F', skipline = 1
-;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
+;readcol, 'drip_gui/grism/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, $
+;    Coeff_2, Coeff_3, FORMAT='A,I,F,F,F,F', skipline = 1
+;;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
+;
+;n_orders=(n_elements(*self.orders))                ; number of extractions/orders
 
-n_orders=(n_elements(*self.orders))                ; number of extractions/orders
-
-; Gets information from the header
-; print, dapname
-header = self.dataman->getelement(dapname,'HEADER')
-extraction_mode = drip_getpar(header, 'EXTMODE')
-instrument_mode = drip_getpar(header, 'INSTMODE')
-gmode = self.dataman-> getelement(dapname, 'GMODE')
-print, 'GMODE = ',  gmode
-case gmode of
-   0: BEGIN
-          grmode_txt = 'G1xG2'
-      END
-   1: BEGIN 
-          grmode_txt = 'G3xG4'
-          ;data=rot(data, -90.0)
-      END
-   2: BEGIN
-          grmode_txt = 'G1'
-          data=rot(data, 90.0)
-      END
-   3: BEGIN
-          grmode_txt = 'G3'
-          data=rot(data, 90.0)
-      END
-   4: BEGIN 
-          grmode_txt = 'G5'
-          data=rot(data, 90.0)
-      END
-   5: BEGIN
-          print, "data is : ", size(data)
-          data=rot(data, 90.0)
-          grmode_txt = 'G6'
-      END
-endcase
-case instrument_mode of
-    'STARE': begin
-         c = [1]
-    END
-    'NAS': begin
-         c = [1, -1]
-    END
-    'NOS': begin
-         c = [1]
-    END
-endcase
-
-
-avg=0
-prev_order = fltarr(16)
-
-for i=0,n_orders-1 do begin
-    ; calculates the slope
-    pos = where( (orders eq (*self.orders)[i]) and (grism_mode eq grmode_txt) )
-    ;print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
-    slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
-    ;xvalues
-    xvalue=findgen(map[1,i,1]-map[0,i,1])
-    ;mx=float((lam_high(pos)-lam_low(pos)))/float(map[1,i,1]-map[0,i,1])     ; Wavelength cal?
-    ;wave=mx(0)*xvalue + (lam_low(pos))(0)
-    C0 = coeff_0[pos]
-    C1 = coeff_1[pos]
-    C2 = coeff_2[pos]
-    C3 = coeff_3[pos]
-    wave = C0[0] + C1[0]*xvalue + C2[0]*(xvalue)^2.0 + C3[0]*(xvalue)^3.0
-    ;yvalues
-    yvalue=round(slope*(xvalue))+map(0,i)
-    ;extracted data
-    dy = (*self.ord_height)[i]
-
-    sub_array = fltarr(n_elements(xvalue),dy+1)
-    for k= 0,n_elements(xvalue)-1 do begin
-        sub_array[k,*]=data[xvalue[k],yvalue[k]:(yvalue[k]+dy)]
-    endfor
-
-    case extraction_mode of
-      'OPTIMAL': begin
-                            ; Optimal Extraction Begins here
-                  extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
-                  ;original = sub_array
-                  for j = 0, n_elements(c)-1 DO BEGIN
-                     n_segments = 16
-                     sub_array *= c[j]
-                     segment_size=floor(n_elements(sub_array[*,0])/n_segments)
-                     
-                     xx = intarr(n_segments)
-                     yy = intarr(n_segments)
-                     fit_status = intarr(n_segments)
-                     
-                     for k = 0,n_segments-1 do begin
-                        ;print, k*segment_size
-                        ;print, (k+1)*segment_size-1
-                        piece = sub_array[k*segment_size:(k+1)*segment_size-1,*]
-                        collapsed = total(piece,1, /NAN)
-                        ;plot, collapsed
-                        
-                        positive = where(collapsed ge 0)
-                        if (positive[0] ne -1) THEN BEGIN
-                            xcoord = findgen(n_elements(collapsed))
-                            ;Used MPFITPEAK instead of gaussfit.Need to give credit
-                            collapse_fit = mpfitpeak(xcoord[positive],$
-                            collapsed[positive], A, NTERMS=3, STATUS=status)
-                            xx[k] = (k+0.5)*segment_size
-                            yy[k] = A[1]
-                            prev_order[k] = yy[k]
-                            fit_status[k] = status
-                         endif else begin
-                            xx[k] = (k+0.5)*segment_size
-                            yy[k] = prev_order[k]
-                         endelse
-                     endfor
-
-                     ;print, fit_status
-                     good_fits = where(fit_status ne 5)
-                     fit_result = POLY_FIT(xx[good_fits],yy[good_fits],2)
-                     x = findgen(n_elements(sub_array[*,0]))
-                     y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
-                     ycoord = findgen(n_elements(sub_array[0,*]))
-                     
-                     for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
-                        filter = lorentz(ycoord, y[k], 3.0)
-                        extracted_spectrum[k] += total(sub_array[k,*]* $
-                                                       filter/max(filter), /NAN)
-                     ENDFOR
-                  ENDFOR
-                  ;print, 'GUI_Extract: ', extracted_spectrum
-                  ;print, asdf
-              END
-      'FULLAP' : begin
-                 ; Full Aperture Extraction
-                 extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
-                 for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
-                     extracted_spectrum[k] = total(sub_array[k,*],/NAN)
-                 ENDFOR
-              end
-    endcase
-
-
-    if (i eq 0) then avg1=mean(extracted_spectrum)   ; Roughly averages spectra to be on the same scale...
-    avg=mean(extracted_spectrum)
-    davg=avg-avg1
-    extracted_spectrum=extracted_spectrum-davg
-    *self.allwave[i]=wave
-    
-    ; G5 and G6 have raw spectrum wavelength increasing right --> left
-    ; so we reverse 'allflux' for those modes
-
-    ;print, extracted_spectrum
-    if (mode eq 4) OR (mode eq 5) then begin
-       *self.allflux[i]=reverse(extracted_spectrum)
-    endif else begin
-       *self.allflux[i]=extracted_spectrum
-    endelse   
-endfor
+;; Gets information from the header
+;; print, dapname
+;header = self.dataman->getelement(dapname,'HEADER')
+;extraction_mode = drip_getpar(header, 'EXTMODE')
+;instrument_mode = drip_getpar(header, 'INSTMODE')
+;gmode = self.dataman-> getelement(dapname, 'GMODE')
+;print, 'GMODE = ',  gmode
+;case gmode of
+;   0: BEGIN
+;          grmode_txt = 'G1xG2'
+;      END
+;   1: BEGIN 
+;          grmode_txt = 'G3xG4'
+;          ;data=rot(data, -90.0)
+;      END
+;   2: BEGIN
+;          grmode_txt = 'G1'
+;          data=rot(data, 90.0)
+;      END
+;   3: BEGIN
+;          grmode_txt = 'G3'
+;          data=rot(data, 90.0)
+;      END
+;   4: BEGIN 
+;          grmode_txt = 'G5'
+;          data=rot(data, 90.0)
+;      END
+;   5: BEGIN
+;          print, "data is : ", size(data)
+;          data=rot(data, 90.0)
+;          grmode_txt = 'G6'
+;      END
+;endcase
+;case instrument_mode of
+;    'STARE': begin
+;         c = [1]
+;    END
+;    'NAS': begin
+;         c = [1, -1]
+;    END
+;    'NOS': begin
+;         c = [1]
+;    END
+;endcase
+;
+;
+;avg=0
+;prev_order = fltarr(16)
+;
+;for i=0,n_orders-1 do begin
+;    ; calculates the slope
+;    pos = where( (orders eq (*self.orders)[i]) and (grism_mode eq grmode_txt) )
+;    ;print, 'Pos = '+string(pos)+' Order = '+string(orders[pos])+', '+string((*self.orders)[i])
+;    slope= float(map[1,i,0]-map[0,i,0])/float(map[1,i,1]-map[0,i,1])
+;    ;xvalues
+;    xvalue=findgen(map[1,i,1]-map[0,i,1])
+;    ;mx=float((lam_high(pos)-lam_low(pos)))/float(map[1,i,1]-map[0,i,1])     ; Wavelength cal?
+;    ;wave=mx(0)*xvalue + (lam_low(pos))(0)
+;    C0 = coeff_0[pos]
+;    C1 = coeff_1[pos]
+;    C2 = coeff_2[pos]
+;    C3 = coeff_3[pos]
+;    wave = C0[0] + C1[0]*xvalue + C2[0]*(xvalue)^2.0 + C3[0]*(xvalue)^3.0
+;    ;yvalues
+;    yvalue=round(slope*(xvalue))+map(0,i)
+;    ;extracted data
+;    dy = (*self.ord_height)[i]
+;
+;    sub_array = fltarr(n_elements(xvalue),dy+1)
+;    for k= 0,n_elements(xvalue)-1 do begin
+;        sub_array[k,*]=data[xvalue[k],yvalue[k]:(yvalue[k]+dy)]
+;    endfor
+;
+;    case extraction_mode of
+;      'OPTIMAL': begin
+;                            ; Optimal Extraction Begins here
+;                  extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+;                  ;original = sub_array
+;                  for j = 0, n_elements(c)-1 DO BEGIN
+;                     n_segments = 16
+;                     sub_array *= c[j]
+;                     segment_size=floor(n_elements(sub_array[*,0])/n_segments)
+;                     
+;                     xx = intarr(n_segments)
+;                     yy = intarr(n_segments)
+;                     fit_status = intarr(n_segments)
+;                     
+;                     for k = 0,n_segments-1 do begin
+;                        ;print, k*segment_size
+;                        ;print, (k+1)*segment_size-1
+;                        piece = sub_array[k*segment_size:(k+1)*segment_size-1,*]
+;                        collapsed = total(piece,1, /NAN)
+;                        ;plot, collapsed
+;                        
+;                        positive = where(collapsed ge 0)
+;                        if (positive[0] ne -1) THEN BEGIN
+;                            xcoord = findgen(n_elements(collapsed))
+;                            ;Used MPFITPEAK instead of gaussfit.Need to give credit
+;                            collapse_fit = mpfitpeak(xcoord[positive],$
+;                            collapsed[positive], A, NTERMS=3, STATUS=status)
+;                            xx[k] = (k+0.5)*segment_size
+;                            yy[k] = A[1]
+;                            prev_order[k] = yy[k]
+;                            fit_status[k] = status
+;                         endif else begin
+;                            xx[k] = (k+0.5)*segment_size
+;                            yy[k] = prev_order[k]
+;                         endelse
+;                     endfor
+;
+;                     ;print, fit_status
+;                     good_fits = where(fit_status ne 5)
+;                     fit_result = POLY_FIT(xx[good_fits],yy[good_fits],2)
+;                     x = findgen(n_elements(sub_array[*,0]))
+;                     y = fit_result[0] + fit_result[1]*x + fit_result[2]*x^2
+;                     ycoord = findgen(n_elements(sub_array[0,*]))
+;                     
+;                     for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+;                        filter = lorentz(ycoord, y[k], 3.0)
+;                        extracted_spectrum[k] += total(sub_array[k,*]* $
+;                                                       filter/max(filter), /NAN)
+;                     ENDFOR
+;                  ENDFOR
+;                  ;print, 'GUI_Extract: ', extracted_spectrum
+;                  ;print, asdf
+;              END
+;      'FULLAP' : begin
+;                 ; Full Aperture Extraction
+;                 extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
+;                 for k = 0, n_elements(extracted_spectrum)-1 DO BEGIN
+;                     extracted_spectrum[k] = total(sub_array[k,*],/NAN)
+;                 ENDFOR
+;              end
+;    endcase
+;
+;
+;    if (i eq 0) then avg1=mean(extracted_spectrum)   ; Roughly averages spectra to be on the same scale...
+;    avg=mean(extracted_spectrum)
+;    davg=avg-avg1
+;    extracted_spectrum=extracted_spectrum-davg
+;    *self.allwave[i]=wave
+;    
+;    ; G5 and G6 have raw spectrum wavelength increasing right --> left
+;    ; so we reverse 'allflux' for those modes
+;
+;    ;print, extracted_spectrum
+;    if (mode eq 4) OR (mode eq 5) then begin
+;       *self.allflux[i]=reverse(extracted_spectrum)
+;    endif else begin
+;       *self.allflux[i]=extracted_spectrum
+;    endelse   
+;endfor
 end
 ;******************************************************************************
 ;     Get Data - Send new sets of data

@@ -37,7 +37,7 @@
 ; DRIP_SPEXTRACT - Pipeline spectral extraction
 ;******************************************************************************
 
-function drip_spextract, data, header
+function drip_spextract, data, header, gmode
 
 common drip_config_info, dripconf
 
@@ -65,21 +65,11 @@ instrument_mode = drip_getpar(header, 'INSTMODE')
 ; print, self.dapsel_name
 ; print, extraction_mode, instrument_mode
 
-if(drip_getpar(header,'FILT1_S') eq 'G1+blk')then mode =2
-if(drip_getpar(header,'FILT1_S') eq 'G3+blk')then mode =3
-if((drip_getpar(header,'FILT4_S') eq 'grism5+blk')) then mode = 4
-if((drip_getpar(header,'FILT4_S') eq 'grism6+blk')) then mode = 5
-if((drip_getpar(header,'FILT1_S') eq 'G1+blk') and $
-   (drip_getpar(header,'FILT2_S') eq 'grism 2')) then mode = 0
-if((drip_getpar(header,'FILT1_S') eq 'G3+blk') and $
-   (drip_getpar(header,'FILT2_S') eq 'grism 4')) then mode =1
+if (gmode gt 1) then n_orders = 1
+if (gmode eq 1) then n_orders = 5
+if (gmode eq 0) then n_orders = 8
 
-
-if (mode gt 1) then n_orders = 1
-if (mode eq 1) then n_orders = 5
-if (mode eq 0) then n_orders = 8
-
-case mode of
+case gmode of
    0: grmode_txt = 'G1xG2'
    1: grmode_txt = 'G3xG4'
    2: grmode_txt = 'G1'
@@ -92,18 +82,12 @@ endcase
 
 ;  This case statement should actually come from the header file or master flat.
 ; 
-case mode of
+case gmode of
     0:begin            ; G1xG2
-        ;   [ [ [y0_bottom_left, y0_bottom_right], [y1_bl, y1_br], ...], [ [x0_left, x0_right], [x1_l, x1_r], ... ] ]
-        ; map=[[[202, 233],[162,210],[127,173],[98,144],[69,110],[46,84],[20,58],[0,38]], $
-        ; [[0,159],[0,255],[0,255],[0,255],[0,255],[0,255],[0,255], [0,255]]]
-        ; ord_height = [21, 21, 21, 21, 21, 21, 21, 18]
-
          map=[[[202,236],[163,210],[128,173],[97,140],[70,110],[45,84],[23,60],[0,37]],$
                     [[1,168]  ,[1,254]  ,[1,254]  ,[1,254] ,[1,254] ,[1,254],[1,254],[1,254]]]
          ord_height=[19,19,19,19,18,17,16,16]
          orders=[15, 16, 17, 18, 19, 20, 21, 22]
-         ;data = rot(data, -90.0)
       end
     1:begin            ; G3xG4
          map=[[[137,231],[80,164],[33,112],[0, 69],[1, 33]], $
@@ -115,25 +99,25 @@ case mode of
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[1]
-         data=rot(data,90.0)
+         ;data=rot(data,90.0)
       end
     3:begin           ; G3
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[1]
-         data=rot(data,90.0)
+         ;data=rot(data,90.0)
       end
     4:begin           ; G5
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[1]
-         data=rot(data,90.0)
+         ;data=rot(data,90.0)
       end
     5:begin           ; G6
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[2]
-         data=rot(data,90.0)
+         ;data=rot(data,90.0)
          ;print, asdf
       end
 endcase
@@ -204,7 +188,7 @@ for i=0,n_orders-1 do begin
                     xcoord = findgen(n_elements(collapsed))
                      ;Used MPFITPEAK instead of gaussfit.Need to give credit
                     collapse_fit = mpfitpeak(xcoord[positive],$
-                       collapsed[positive], A, NTERMS=3, STATUS=status)
+                       collapsed[positive], A, NTERMS=3, STATUS=status, /lorentzian)
                     xx[k] = (k+0.5)*segment_size
                     yy[k]= A[1]
                     prev_order[k] = yy[k]
@@ -268,7 +252,7 @@ ext_orders=ext_orders[1:*,*]
 ; G5 and G6 have lambda increaseing right to left (all others are left
 ; to right. So flitp G5 and G6 'allflux' arrays.
 
-if (mode eq 4) OR (mode eq 5) then begin
+if (gmode eq 4) OR (gmode eq 5) then begin
    print,'reversing g5 or g6 wavelength order'
    allflux=reverse(allflux) ; reverse order so lambda left --> right
    extracted =[[allwave],[allflux],[ext_orders]]

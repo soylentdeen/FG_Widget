@@ -88,13 +88,18 @@ pro nas::reduce
 ; stack
 *self.stacked=drip_stack(*self.flatted,*self.header, posdata=*self.posdata, $
                          chopsub=*self.chopsub)
+if (self.gmode gt 1) THEN BEGIN
+    *self.stacked=rot(*self.stacked, 90.0)
+ENDIF
 ; undistort
 ;*self.undistorted=drip_undistort(*self.stacked,*self.header,*self.basehead)
 *self.undistorted=*self.stacked
 
 ; EXTRACTION GOES HERE
 ;
-*self.extracted = drip_spextract(*self.undistorted,*self.header)
+*self.extracted = drip_spextract(*self.undistorted,*self.header, self.gmode)
+*self.allwave = *self.extracted[*,0]
+*self.allflux = *self.extracted[*,1]
 ;drip_spextract, *self.undistorted, *self.header
 
 
