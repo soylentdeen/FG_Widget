@@ -20,7 +20,7 @@
 ; RESTRICTIONS:
 ;
 ; PROCEDURE:
-;   Opens a window with the prompt message, gives [OK] [Chancel] buttons
+;   Opens a window with the prompt message, gives [OK] [Cancel] buttons
 ;
 ; MODIFICATION HISTORY
 ;   Written By: Marc Berthoud Palomar 2006-7-2
@@ -59,7 +59,7 @@ top=widget_base(uvalue=statval, /column)
 field=cw_field(top,title=prompt, xsize=20)
 buttons=widget_base(top, /row)
 button_ok=widget_button(buttons, value='OK', event_pro='dialog_input_event')
-button_chancel=widget_button(buttons, value='Chancel', $
+button_cancel=widget_button(buttons, value='Cancel', $
                              event_pro='dialog_input_event')
 ; set status value
 *statval={fieldwid:field, chancelwid:button_chancel, $

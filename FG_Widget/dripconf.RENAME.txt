@@ -1,2 +1,168 @@
-instmode=instmode
-EXTMODE='OPTIMAL'
+;## FORCAST SWC DRIP CONFIGURATION FILE ##
+; Format: any line that does not start with an alphabetic character
+;         is considered comment and is ignored
+
+; Admin Keywords
+instmode='STARE'
+obs_id=obs_id
+;telescop='PIXELS'
+telescop=telescop
+;extmode='OPTIMAL'
+extmode='FULLAP'
+
+;FILT1_S='G3+blk'
+;Filt2_S='grism 2'
+; Keyword for file selection 
+FKEYSEL=[INSTMODE,OBJNAME,OBJECT,FILTER,C2NC2,DATATYPE,,PROCSTAT,DICHROIC,DATASRC,OBSTYPE]
+
+; Experimental functions
+; find_cal='Y' triggers a search for cal data
+find_cal='N'
+; cormerge='COR' triggers drip_merge to use cross correlation
+; cormerge='CORFLT' trigger drip_merge to use cross-cor of
+; FLATFIELDED data (skips undistort and stack pipesteps)
+; cormerge='CENT' triggers drip_merge to use centroid
+; cormerge='N' triggers drip_merge to use nominal chop/nod positions
+CORMERGE = 'CENT'
+; jbclean = 'FFT' triggers cleaning jailbar pattern with fft
+; jbclean='MEDIAN' trigger cleaning jailbar pattern with median filter
+; jbclean='N' no jailbar cleaning
+;jbclean = 'MEDIAN'
+jbclean = 'N'
+
+; Work directory where the code is running
+; All the path of the calibration files will be taking wrt this directory
+caldata='/home/keller/SOFIA/grism/fg_080211/FG_Widget/DEMO_GRISM_DATA_v1.3/Cal/'
+
+; Calibration files
+;badfile='badpix.fits'
+;badfile='lwc_badpix.fits'
+;flatfile='flat.fits'
+;flatfile='rFT03_0337.fits'
+;darkfile='dark.fits'
+;darkfile='r039_1203.fits'
+;MASKFLT='N'
+;fmaskfile='swc_flat_mask.fits'
+
+; Calibration files for swc and lwc cameras
+badfileswc='../swc_badpix.fits'
+badfilelwc='../lwc_badpix.fits'
+flatfileswc='b039_1202.fits'
+flatfilelwc='r039_1202.fits'
+darkfileswc='b039_1203.fits'
+darkfilelwc='r039_1203.fits'
+;MASKFLT='N'
+;fmaskfile='swc_flat_mask.fits'
+
+; sky geometry
+sky_angl=sky_angl
+telra=telra
+teldec=teldec
+
+; operations table
+otmode=otmode
+otstacks=otstacks
+otnbufs=otnbufs
+
+; CHOPPING
+; M82
+; chpamp=76
+; chpangle=139.8
+;Jupiter
+;chpamp=76
+;chpangle=139.8
+;Foreoptics test image
+;chpamp=26
+;chpangle=90
+;chpnpos=chpnpos
+;chpamp=chpamp1
+chpamp1=chpamp1
+chpangle=chpangle
+
+; NODDING
+nodbeam=nodbeam
+nodraas=nodraas
+noddecas=noddecas
+; M82
+;noddist=152
+;nodangle=139.8
+; Jupiter
+;noddist=76
+;nodangle=49.8
+; Foreoptics test image
+;noddist=130
+;nodangle=-90
+;noddist=nodamp
+;nodangle=nodangle
+;nodangle=0
+
+
+;dithering in pixels (not official DCS keywords)
+dither=dither
+dither_x=dither_x
+dither_y=dither_x
+ditherx1=ditherx1
+dithery1=dithery1
+ditherx2=ditherx2
+dithery2=dithery2
+ditherx3=ditherx3
+dithery3=dithery3
+ditherx4=ditherx4
+dithery4-dithery4
+ditherx5=ditherx5
+dithery5=dithery5
+ditherx6=ditherx6
+dithery6=dithery6
+ditherx7=ditherx7
+dithery7=dithery7
+ditherx8=ditherx8
+dithery8=dithery8
+ditherx9=ditherx9
+dithery9=dithery9
+
+; mapping
+mapnxpos=mapnxpos
+mapnypos=mapnypos
+mapposx=mapposx
+mapposy=mapposy
+mapintx=mapintx
+mapinty=mapinty
+
+; test mode
+testmrge=testmrge
+testcadd=testcadd
+
+; Parameters for resizing imaging 
+resize=1.0 
+border=128 
+
+; Find peaks
+cthresh=15.
+mthresh=15.
+;mfwhm=20.
+
+; distortion correction
+order=3
+pinhole_file='pinhole_locs.txt'
+pin_npts=[12,12]
+pin_spx=[3,3,3,2,5,5,6,6]
+pin_spy=[1,2,3,3,5,6,5,6]
+
+; droop correction
+mindroop    = 0.0
+maxdroop    = 65535.0
+nrodroop = 16
+fracdroop = 0.0035
+
+; Global image correction
+nlinsection=[128,128,190,190]
+nlinrefs = 9000.
+nlinscal = 1000.
+nlcswclo = [1.0000000, 0.039441412, -0.00072236275,  0.0042965104,   0.00010102847,  -0.00051258858,  -0.00011479429,  -7.3237058e-06]
+nlcswchi = [1.0000000, 0.039441412, -0.00072236275,  0.0042965104,   0.00010102847,  -0.00051258858,  -0.00011479429,  -7.3237058e-06]
+nlclwclo = [1.0000000, 0.013623660, -0.0027946248,  -0.0016678753,  -0.00056937559,  -4.9890929e-05,   0.00,		0.00]
+nlclwchi = [1.0000000, 0.028168238, -0.0043187876,   0.00081871971, -0.00017754143,  -0.00025721829,  -5.2943136e-05,  -3.2265402e-06]
+limswclo  = [2087.00, 13227.0]
+limswchi  = [2087.00, 13227.0]
+limlwclo  = [3118.00, 11658.0]
+limlwchi  = [2047.00, 12414.0]
