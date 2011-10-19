@@ -103,9 +103,13 @@ data=*self.data
 self->setmap,mode
 map=*self.map
 
-;readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  ; need to modify to include polynomial fits
-;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', comment = '#', delimiter=','
-readcol, 'drip_gui/grism/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, Coeff_2, Coeff_3, FORMAT='A,I,F,F,F,F', skipline = 1
+;readcol,'drip_gui/order_calb.txt',orders,lam_low,lam_high,format='i,f,f'  
+; need to modify to include polynomial fits
+;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, $
+;      lam_high, FORMAT='A,I,F,F', comment = '#', delimiter=','
+
+readcol, 'drip_gui/grism/order_calb.txt', grism_mode, orders, Coeff_0, Coeff_1, $
+    Coeff_2, Coeff_3, FORMAT='A,I,F,F,F,F', skipline = 1
 ;readcol, 'drip_gui/order_calb.txt', grism_mode, orders, lam_low, lam_high, FORMAT='A,I,F,F', skipline = 1
 
 n_orders=(n_elements(*self.orders))                ; number of extractions/orders
@@ -115,20 +119,33 @@ n_orders=(n_elements(*self.orders))                ; number of extractions/order
 header = self.dataman->getelement(dapname,'HEADER')
 extraction_mode = drip_getpar(header, 'EXTMODE')
 instrument_mode = drip_getpar(header, 'INSTMODE')
-
-case mode of
+gmode = self.dataman-> getelement(dapname, 'GMODE')
+print, 'GMODE = ',  gmode
+case gmode of
    0: BEGIN
           grmode_txt = 'G1xG2'
-          data=rot(data, -90.0)
       END
    1: BEGIN 
           grmode_txt = 'G3xG4'
-          data=rot(data, -90.0)
+          ;data=rot(data, -90.0)
       END
-   2: grmode_txt = 'G1'
-   3: grmode_txt = 'G3'
-   4: grmode_txt = 'G5'
-   5: grmode_txt = 'G6'
+   2: BEGIN
+          grmode_txt = 'G1'
+          data=rot(data, 90.0)
+      END
+   3: BEGIN
+          grmode_txt = 'G3'
+          data=rot(data, 90.0)
+      END
+   4: BEGIN 
+          grmode_txt = 'G5'
+          data=rot(data, 90.0)
+      END
+   5: BEGIN
+          print, "data is : ", size(data)
+          data=rot(data, 90.0)
+          grmode_txt = 'G6'
+      END
 endcase
 case instrument_mode of
     'STARE': begin
@@ -137,10 +154,15 @@ case instrument_mode of
     'NAS': begin
          c = [1, -1]
     END
+    'NOS': begin
+         c = [1]
+    END
 endcase
 
 
 avg=0
+prev_order = fltarr(16)
+
 for i=0,n_orders-1 do begin
     ; calculates the slope
     pos = where( (orders eq (*self.orders)[i]) and (grism_mode eq grmode_txt) )
@@ -187,13 +209,19 @@ for i=0,n_orders-1 do begin
                         ;plot, collapsed
                         
                         positive = where(collapsed ge 0)
-                        xcoord = findgen(n_elements(collapsed))
-                        ;Used MPFITPEAK instead of gaussfit.Need to give credit
-                        collapse_fit = mpfitpeak(xcoord[positive],$
+                        if (positive[0] ne -1) THEN BEGIN
+                            xcoord = findgen(n_elements(collapsed))
+                            ;Used MPFITPEAK instead of gaussfit.Need to give credit
+                            collapse_fit = mpfitpeak(xcoord[positive],$
                             collapsed[positive], A, NTERMS=3, STATUS=status)
-                        xx[k] = (k+0.5)*segment_size
-                        yy[k] = A[1]
-                        fit_status[k] = status
+                            xx[k] = (k+0.5)*segment_size
+                            yy[k] = A[1]
+                            prev_order[k] = yy[k]
+                            fit_status[k] = status
+                         endif else begin
+                            xx[k] = (k+0.5)*segment_size
+                            yy[k] = prev_order[k]
+                         endelse
                      endfor
 
                      ;print, fit_status
@@ -209,7 +237,8 @@ for i=0,n_orders-1 do begin
                                                        filter/max(filter), /NAN)
                      ENDFOR
                   ENDFOR
-                  print, 'GUI_Extract: ', extracted_spectrum
+                  ;print, 'GUI_Extract: ', extracted_spectrum
+                  ;print, asdf
               END
       'FULLAP' : begin
                  ; Full Aperture Extraction
@@ -313,7 +342,7 @@ case extraction_mode of
 
                   ;
                   ; HARDWIRED FOR STARE MODE
-                  c = [1]
+                  ;c = [1]
                   ;
 
                   extracted_spectrum = fltarr(n_elements(sub_array[*,0]))
@@ -331,7 +360,7 @@ case extraction_mode of
                         print, i*segment_size
                         print, (i+1)*segment_size-1
                         piece = sub_array[i*segment_size:(i+1)*segment_size-1,*]
-                        collapsed = total(piece,2)
+                        collapsed = total(piece,1, /NAN)
                         
                         positive = where(collapsed ge 0)
                         xcoord = findgen(n_elements(collapsed))

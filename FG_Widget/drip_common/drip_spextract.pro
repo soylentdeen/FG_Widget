@@ -103,6 +103,7 @@ case mode of
                     [[1,168]  ,[1,254]  ,[1,254]  ,[1,254] ,[1,254] ,[1,254],[1,254],[1,254]]]
          ord_height=[19,19,19,19,18,17,16,16]
          orders=[15, 16, 17, 18, 19, 20, 21, 22]
+         ;data = rot(data, -90.0)
       end
     1:begin            ; G3xG4
          map=[[[137,231],[80,164],[33,112],[0, 69],[1, 33]], $
@@ -114,21 +115,26 @@ case mode of
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[1]
+         data=rot(data,90.0)
       end
     3:begin           ; G3
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[1]
+         data=rot(data,90.0)
       end
     4:begin           ; G5
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[1]
+         data=rot(data,90.0)
       end
     5:begin           ; G6
          map=[[[0,0]],[[0,255]]]
          ord_height = [255]
          orders=[2]
+         data=rot(data,90.0)
+         ;print, asdf
       end
 endcase
 
@@ -136,8 +142,11 @@ case instrument_mode of
     'STARE': begin
          c = [1]
     END
+    'NOS': begin
+         c = [1]
+    END
     'NAS': begin
-         c = [-1, 1]
+         c = [1, -1]
     END
 endcase
 
@@ -145,6 +154,7 @@ allwave=fltarr(1)
 allflux=fltarr(1)
 avg=0
 ext_orders=fltarr(1)
+prev_order = fltarr(16)
 for i=0,n_orders-1 do begin
     ; calculates the slope
 
@@ -186,19 +196,24 @@ for i=0,n_orders-1 do begin
              fit_status = intarr(n_segments)
              
              for k = 0,n_segments-1 do begin
-                                ;print, k*segment_size
-                                ;print, (k+1)*segment_size-1
                 piece = sub_array[k*segment_size:(k+1)*segment_size-1,*]
-                collapsed = total(piece,2, /NAN)
+                collapsed = total(piece,1, /NAN)
                 
                 positive = where(collapsed ge 0)
-                xcoord = findgen(n_elements(collapsed))
-                                ;Used MPFITPEAK instead of gaussfit.Need to give credit
-                collapse_fit = mpfitpeak(xcoord[positive],$
-                                         collapsed[positive], A, NTERMS=3, STATUS=status)
-                xx[k] = (k+0.5)*segment_size
-                yy[k] = A[1]
-                fit_status[k] = status
+                if (positive[0] ne -1) THEN BEGIN
+                    xcoord = findgen(n_elements(collapsed))
+                     ;Used MPFITPEAK instead of gaussfit.Need to give credit
+                    collapse_fit = mpfitpeak(xcoord[positive],$
+                       collapsed[positive], A, NTERMS=3, STATUS=status)
+                    xx[k] = (k+0.5)*segment_size
+                    yy[k]= A[1]
+                    prev_order[k] = yy[k]
+                    ;print, k, k*segment_size, (k+1)*segment_size-1, A
+                    fit_status[k] = status
+                 ENDIF ELSE BEGIN
+                    xx[k] = (k+0.5)*segment_size
+                    yy[k] = prev_order[k]
+                 ENDELSE
              endfor
              
                                 ;print, fit_status
@@ -260,7 +275,7 @@ if (mode eq 4) OR (mode eq 5) then begin
 endif else begin
    extracted = [[allwave],[allflux],[ext_orders]]
 endelse
-print, 'Extracted Spectrum : ', extracted
+;print, 'Extracted Spectrum : ', extracted
 return, extracted
 
 end

@@ -105,17 +105,18 @@
 ;     SETDATA - set data values
 ;****************************************************************************
 
-pro drip::setdata, mode=mo, n=n, readme=rm, $
+pro drip::setdata, mode=mo, gmode=gmode, n=n, readme=rm, $
         pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
         badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
         cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $  ;LIN
         
         extracted=exd, allwave=alw, allflux=alf,$ ;7/7/11
-        merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $ ;EXT  , extspec=exs
+        merged=md, coadded=coa, lastcoadd=lc, $ ;EXT  , extspec=exs, coadded_rot=cor, 
         badmap=bm, darks=ds, cleanddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
         masterflat=mf, lincor=lnc ;LIN
 
 if keyword_set(mo) then self.mode=mo
+if keyword_set(gmode) then self.gmode=gmode
 if keyword_set(n) then  self.n=n
 if keyword_set(rm) then self.readme=rm
 if keyword_set(pl) then self.pathload=pl
@@ -140,7 +141,7 @@ if keyword_set(alf) then *self.allflux=alf   ;7/7/11
 
 if keyword_set(md) then *self.merged=md
 if keyword_set(coa) then *self.coadded=coa
-if keyword_set(cor) then *self.coadded_rot=cor
+;if keyword_set(cor) then *self.coadded_rot=cor
 ;if keyword_set(exs) then *self.extspec=exs ;EXT
 if keyword_set(lc) then *self.lastcoadd=lc
 if keyword_set(bm) then *self.badmap=bm
@@ -158,17 +159,17 @@ end
 ;     GETDATA - Returns SELF structure as a non-object or specified variables
 ;****************************************************************************
 
-function drip::getdata, mode=mo, n=n, readme=rm, $
+function drip::getdata, mode=mo, gmode=gmode, n=n, readme=rm, $
              pathload=pl, pathsave=ps, filename=fn, header=hd, basehead=bh, $
              badfile=bf, linfile=lnf, flatfile=ff, data=da, $  ;LIN
              cleaned=cl, badflags=bl, linearized=lnr, flatted=fl, stacked=st, undistorted=ud, $ ;LIN
-            
  extracted=exd, allwave=alw, allflux=alf,$ ;7/7/11
- merged=md, coadded=coa, coadded_rot=cor, lastcoadd=lc, $ ;EXT  extspec=exs,
+ merged=md, coadded=coa, lastcoadd=lc, $ ;EXT  extspec=exs, coadded_rot=cor
              badmap=bm, darks=ds, cleaneddarks=cd, darksum=dks, flats=fs, cleanedflats=cf, $
              masterflat=mf, lincor=lnc ;LIN
 
 if keyword_set(mo) then return, self.mode
+if keyword_set(gmode) then return, self.gmode
 if keyword_set(n)  then return, self.n
 if keyword_set(rm) then return, self.readme
 if keyword_set(pl) then return, self.pathload
@@ -193,7 +194,7 @@ if keyword_set(alf) then return, *self.allflux   ;7/7/11
 
 if keyword_set(md) then return, *self.merged
 if keyword_set(coa) then return, *self.coadded
-if keyword_set(cor) then return, *self.coadded_rot
+;if keyword_set(cor) then return, *self.coadded_rot
 ;if keyword_set(exs) then return, *self.extspec        ;EXT
 if keyword_set(lc) then return, *self.lastcoadd
 if keyword_set(bm) then return, *self.badmap
@@ -205,7 +206,7 @@ if keyword_set(lnc) then return, *self.lincor   ;LIN
 if keyword_set(cf) then return, *self.cleanedflats
 if keyword_set(mf) then return, *self.masterflat
 
-structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
+structure={mode:self.mode, gmode:self.gmode, n:self.n, readme:self.readme, header:*self.header, $
            basehead:*self.basehead, filename:self.filename, $
            pathload:self.pathload, pathsave:self.pathsave, $
            badfile:self.badfile, linfile:self.linfile, flatfile:self.flatfile, $ ;LIN
@@ -215,7 +216,7 @@ structure={mode:self.mode, n:self.n, readme:self.readme, header:*self.header, $
 
            extracted:*self.extracted, allwave:*self.allwave, allflux:*self.allflux,$ ;7/7/11
            merged:*self.merged, $
-           coadded:*self.coadded, coadded_rot:rot(*self.coadded, 90), $ ;extspec:*self.extspec, $;  EXT
+           coadded:*self.coadded, $ ;extspec:*self.extspec, $;  EXT coadded_rot:rot(*self.coadded, 90),
            lastcoadd:*self.lastcoadd, badmap:*self.badmap, darks:*self.darks, $
            cleaneddarks:*self.cleaneddarks, darksum:*self.darksum, flats:*self.flats, $
            lincor:*self.lincor, $ ;LIN
@@ -231,7 +232,7 @@ end
 ;******************************************************************************
 
 pro drip::load, filename, masterflat=mf, cleaned=cl, linearized=lnr, flatted=fl, stacked=st, $ ;LIN
-                undistort=ud, merged=md, coadded=coa, coadded_rot=cor  ;, extspec=exs   ;EXT
+                undistort=ud, merged=md, coadded=coa; , coadded_rot=cor  ;, extspec=exs   ;EXT
 
 ; error check
 s=size(filename)
@@ -274,10 +275,10 @@ endif else if keyword_set(coa) then begin
     fname=self.pathload+strmid(self.filename,0,namepos)+'_coadded.fits'
     data=self.coadded
     head=self.basehead
-endif else if keyword_set(cor) then begin
-    fname=self.pathload+strmid(self.filename,0,namepos)+'_coadded_rot.fits'
-    data=self.coadded_rot
-    head=self.basehead
+;endif else if keyword_set(cor) then begin
+;    fname=self.pathload+strmid(self.filename,0,namepos)+'_coadded_rot.fits'
+;    data=self.coadded_rot
+;    head=self.basehead
 ;endif else if keyword_set(exs) then begin
 ;    fname=self.pathload+strmid(self.filename,0,namepos)+'_extspec.fits'  ; EXT
 ;    data=self.extspec
@@ -296,7 +297,7 @@ end
 ;******************************************************************************
 
 pro drip::save, masterflat=mf, cleaned=cl, linearized=lnr, flatted=fl, stacked=st, $ ;LIN
-                undistort=ud, merged=md, coadded=co, coadded_rot=cor, $ ;  EXT    extspec=exs, 
+                undistort=ud, merged=md, coadded=co, $;, coadded_rot=cor, $ ;  EXT    extspec=exs, 
                 filename=filename
 
 ; check if reduced data available
@@ -330,9 +331,9 @@ endif else if keyword_set(md) then begin
 endif else if keyword_set(co) then begin
     fname=strmid(self.filename,0,namepos)+'_coadded.fits'
     data=self.coadded
-endif else if keyword_set(cor) then begin
-    fname=strmid(self.filename,0,namepos)+'_coadded_rot.fits'
-    data=self.coadded_rot
+;endif else if keyword_set(cor) then begin
+;    fname=strmid(self.filename,0,namepos)+'_coadded_rot.fits'
+;    data=self.coadded_rot
 ;endif else if keyword_set(exs) then begin
 ;    fname=strmid(self.filename,0,namepos)+'_extspec.fits'
 ;    data=self.extspec
@@ -425,20 +426,20 @@ pro drip::getcal
 ;Find mode of grism
 print, 'Filter 1 :', drip_getpar(*self.basehead,'FILT1_S')
 print, 'Filter 2 :', drip_getpar(*self.basehead,'FILT2_S')
-if(drip_getpar(*self.basehead,'FILT1_S') eq 'G1+blk')then mode =2
-if(drip_getpar(*self.basehead,'FILT1_S') eq 'G3+blk')then mode =3
-if((drip_getpar(*self.basehead,'FILT4_S') eq 'grism5+blk')) then mode = 4
-if((drip_getpar(*self.basehead,'FILT4_S') eq 'grism6+blk')) then mode = 5
+if(drip_getpar(*self.basehead,'FILT1_S') eq 'G1+blk')then self.gmode=2
+if(drip_getpar(*self.basehead,'FILT1_S') eq 'G3+blk')then self.gmode=3
+if((drip_getpar(*self.basehead,'FILT4_S') eq 'grism5+blk')) then self.gmode=4
+if((drip_getpar(*self.basehead,'FILT4_S') eq 'grism6+blk')) then self.gmode=5
 if((drip_getpar(*self.basehead,'FILT1_S') eq 'G1+blk') and $
-   (drip_getpar(*self.basehead,'FILT2_S') eq 'grism 2')) then mode = 0
+   (drip_getpar(*self.basehead,'FILT2_S') eq 'grism 2')) then self.gmode=0
 if((drip_getpar(*self.basehead,'FILT1_S') eq 'G3+blk') and $
-   (drip_getpar(*self.basehead,'FILT2_S') eq 'grism 4')) then mode =1
+   (drip_getpar(*self.basehead,'FILT2_S') eq 'grism 4')) then self.gmode=1
 
-if (mode le 3) then begin
+if (self.gmode le 3) then begin
    badpix = '../Cal/swc_badpix.fits' 
    dark = '../Cal/swc_dark.fits'
 endif
-if (mode gt 3) then begin
+if (self.gmode gt 3) then begin
    badpix = '../Cal/lwc_badpix.fits'
    dark = '../Cal/swc_dark.fits'
 endif
@@ -447,7 +448,7 @@ endif
 ; flat files x3 (m, d, b3) NEEDS TO FIND INFO IN HEADER (DNE
 ; CURRENTLY)
 ; b3 setting will be removed?
-case mode of
+case self.gmode of
    0: flat = '../Cal/G1xG2_m_flat.fits'
    1: flat = '../Cal/G3xG4_m_flat.fits'
    2: flat = '../Cal/G1_m_Coldflat.fits'
@@ -584,15 +585,15 @@ drip_message,'drip::getcal - done cleaning flats'
 ;filter=sxpar(*self.basehead,'FILT2_S')
 
 
-if mode eq  0 then begin  ;get the order mask
+if self.gmode eq  0 then begin  ;get the order mask
     fname='../Cal/G1xG2_order_mask.fits'
     ordermask=readfits(self.pathload+fname)
 endif
-if mode eq   1 then begin ;get the order mask
+if self.gmode eq   1 then begin ;get the order mask
     fname='../Cal/G3xG4_order_mask.fits'
     ordermask=readfits(self.pathload+fname)
 endif
-if mode gt  1 then ordermask=dblarr(256,256)+1
+if self.gmode gt  1 then ordermask=dblarr(256,256)+1
 
 ;Build master flatfield image. Flat files are 4-plane fits data cubes
 ; MASTERFLAT IS DARK-SUBTRACTED
@@ -601,7 +602,7 @@ s=size(*self.cleanedflats)
 if s[0] eq 2 then begin
     flatdiff=*self.cleanedflats;    -*self.darksum
     master=flatdiff/median(flatdiff[where(ordermask eq 1)])
-    if (mode eq 0 or mode eq 1) then master[where(ordermask eq 0)]=1.
+    if (self.gmode eq 0 or self.gmode eq 1) then master[where(ordermask eq 0)]=1.
     ;(no_flat_data eq 0) replaced by mode eq 0/1 to work with single disperse
 endif
 if s[0] eq 3 then begin
@@ -613,7 +614,7 @@ if s[0] eq 3 then begin
           lflat=((*self.cleanedflats)[*,*,2]+(*self.cleanedflats)[*,*,3])/2
           flatdiff=hflat-lflat
           master=flatdiff/median(flatdiff[where(ordermask eq 1)]) ; normalize
-          if ((mode eq 0) OR (mode eq 1)) then master[where(ordermask eq 0)]=1.
+          if ((self.gmode eq 0) OR (self.gmode eq 1)) then master[where(ordermask eq 0)]=1.
           end
        (s[3] eq 2): begin
           ; First frame is integration on a warmer/brighter source
@@ -622,14 +623,14 @@ if s[0] eq 3 then begin
           lflat=((*self.cleanedflats)[*,*,1])
           flatdiff=hflat-lflat
           master=flatdiff/median(flatdiff[where(ordermask eq 1)]) ; normalize
-          if ((mode eq 0) OR (mode eq 1)) then master[where(ordermask eq 0)]=1.
+          if ((self.gmode eq 0) OR (self.gmode eq 1)) then master[where(ordermask eq 0)]=1.
           end
        (s[3] eq 3) OR (s[3] gt 4): begin  ; Assume planes are images of same source
           flatsum=total(*self.cleanedflats,3)
           ; make masterflat: darksub and normalize
           flatdiff=flatsum    ;flatsum-*self.darksum
           master=flatdiff/median(flatdiff[where(ordermask eq 1)])
-          if ((mode eq 0) OR (mode eq 1)) then master[where(ordermask eq 0)]=1.
+          if ((self.gmode eq 0) OR (self.gmode eq 1)) then master[where(ordermask eq 0)]=1.
           end
     ENDCASE
 endif
@@ -795,7 +796,7 @@ ptr_free, self.allflux
 ptr_free, self.extracted
 ptr_free, self.merged
 ptr_free, self.coadded
-ptr_free, self.coadded_rot
+;ptr_free, self.coadded_rot
 ;ptr_free, self.extspec  ;EXT
 ptr_free, self.lastcoadd
 ptr_free, self.badmap
@@ -842,7 +843,7 @@ self.allflux=ptr_new(/allocate_heap)
 
 self.merged=ptr_new(/allocate_heap)
 self.coadded=ptr_new(/allocate_heap)
-self.coadded_rot=ptr_new(/allocate_heap)
+;self.coadded_rot=ptr_new(/allocate_heap)
 ;self.extspec=ptr_new(/allocate_heap) ;EXT
 self.lastcoadd=ptr_new(/allocate_heap)
 self.badmap=ptr_new(/allocate_heap)
@@ -895,6 +896,7 @@ pro drip__define
 struct={drip, $
         ; admin variables
         mode:'', $                  ; FORCAST instrument mode
+        gmode:-1, $                 ; Grism mode
         n:0, $                      ; number of reduced files
         readme:strarr(5), $         ; readme string
         parentn:0, $                ; counter for number of parent files
@@ -926,7 +928,7 @@ struct={drip, $
 
         merged:ptr_new(), $         ; merged data
         coadded:ptr_new(), $        ; coadded data
-        coadded_rot:ptr_new(), $    ; coadded rotated
+;        coadded_rot:ptr_new(), $    ; coadded rotated
  ;       extspec:ptr_new(), $        ; extracted grism spectrum  ;EXT
         lastcoadd:ptr_new(), $      ; previous coadded data
         ; support data varaiables

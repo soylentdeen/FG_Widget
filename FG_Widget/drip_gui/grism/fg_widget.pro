@@ -216,10 +216,12 @@ eabase = widget_base(top,/column,/base_align_left)
 
 ;display windows + display manager (will be widget id's of objects)
 disp=cw_drip_disp(dbase, quad_id='A', xsize=xs, ysize=ys, _extra=e)
-disp=[disp,cw_drip_disp(dbase, quad_id='B', xsize=xs, ysize=ys, _extra=e)]
+;The second display window (B) was disappeared on 18 Oct. 2011
+;
+;disp=[disp,cw_drip_disp(dbase, quad_id='B', xsize=xs, ysize=ys, _extra=e)]
 
 ;get objects
-dispn=2
+dispn=1
 disp_objs=objarr(dispn)
 for i=0,dispn-1 do begin  ;get object ref from 1st child widget uvalue
     id=widget_info(disp[i], /child)

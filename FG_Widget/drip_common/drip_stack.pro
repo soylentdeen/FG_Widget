@@ -96,6 +96,7 @@ mode=strtrim(mode,2)
 switch mode of
     'C2':
     'NAS': ;Grism Nod along slit
+    'NOS': ;Grism Nod along slit
     'C2NC2': begin ; 2 position chop
         ; get differences
         chopsub=fltarr(s[1],s[2],s[3]/2)
