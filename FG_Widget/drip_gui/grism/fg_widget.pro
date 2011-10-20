@@ -68,6 +68,7 @@
 ;               - Include save of dripconfig on exit
 ;     Modified: Casey Deen, Luke Keller, IC Oct. 2011
 ;               - Update to v2.0 in title bar
+;               - Update to v2.1 in title bar
 
 ;**************************************************************************
 ;   EVENTHANDLER
@@ -190,7 +191,7 @@ endif
 
 ;** widgets and objects
 ; base widget
-top=widget_base(column=2, title='FORCAST Grism Spectral Extraction Widget v2.0', $
+top=widget_base(column=2, title='FORCAST Grism Spectral Extraction Widget v2.1', $
 ;      mbar=mbar, /scroll, x_scroll_size=800, y_scroll_size=600) ; scroling
        mbar=mbar) ; non scroling
 ;control base
