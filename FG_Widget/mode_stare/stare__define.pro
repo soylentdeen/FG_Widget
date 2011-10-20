@@ -59,6 +59,9 @@ if size(*self.flatted, /n_dimen) eq 3 then $
 else *self.stacked=*self.flatted
 ; undistort
 print, 'TESTING'
+if (self.gmode gt 1) THEN BEGIN
+    *self.stacked=rot(*self.stacked, 90.0)
+ENDIF
 *self.undistorted=*self.stacked  ; NO DISTORTION CORRECTION FOR GRISM MODES
 ;*self.undistorted=drip_undistort(*self.stacked,*self.header,*self.basehead)
 ; merge
@@ -66,10 +69,10 @@ print, 'TESTING'
 ; EXTRACTION GOES HERE
 ;
 ; *self.extracted = drip_spextract(*self.undistorted,*self.header)
-*self.extracted=drip_spextract(*self.undistorted, *self.header)
+*self.extracted=drip_spextract(*self.undistorted, *self.header, self.gmode)
 ;print, 'extracted     ', *self.extracted
-;*self.allwave=*self.extracted[*,0]
-;*self.allflux=*self.extracted[*,1] 
+*self.allwave=(*self.extracted)[*,0]
+*self.allflux=(*self.extracted)[*,1] 
 
 
 ; *self.extracted is a spectrum (1-D) that needs to be plotted and/or

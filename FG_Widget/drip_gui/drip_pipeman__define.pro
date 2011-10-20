@@ -242,6 +242,7 @@ repeat begin ;reduce, display, increment
           dapnew=self.name, elemnew=(*self.dispnewpipe)[dispi]
     endfor
     ; update channels
+    ;print, pipeman_asdf
     self.dataman->channelcall
     ; new reduced data so set flag to 0
     self.saveflag=0

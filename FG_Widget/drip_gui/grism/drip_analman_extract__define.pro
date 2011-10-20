@@ -568,6 +568,7 @@ if((drip_getpar(header,'FILT1_S') eq 'G3+blk') and $
          
         self.xplot->add_checkboxes, orders=orders
         print, 'Orders in analman_extract: ', orders
+        ;print, analman_extract_asdf
         self.xplot->draw_multi, orders=orders, /all, extobj=self.extman
         
     endif

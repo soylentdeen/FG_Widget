@@ -976,7 +976,7 @@ device,decomposed=0
 
 end
 ;******************************************************************************
-;     Set Data
+;     Get Data
 ;******************************************************************************
 function drip_xplot::getdata, buffer=buffer,$
                    plotwin_wid=plotwin_wid, pltwin=plotwin, $

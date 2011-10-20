@@ -119,7 +119,7 @@ flt_idx=ptr_new(intarr(n_elements(list)))
 ;make buttons
 button_list=widget_base(top, /row)
 if not keyword_set(viewonly) then $
-  chancelwid=widget_button(button_list, value='Chancel', uvalue=0, $
+  chancelwid=widget_button(button_list, value='Cancel', uvalue=0, $
                            event_pro='edit_param_list_event') $
   else chancelwid=0
 donewid=widget_button(button_list, value='Done', uvalue=1, $
