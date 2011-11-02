@@ -260,6 +260,7 @@ endif else begin
    extracted = [[allwave],[allflux],[ext_orders]]
 endelse
 ;print, 'Extracted Spectrum : ', extracted
+;help, extracted
 return, extracted
 
 end

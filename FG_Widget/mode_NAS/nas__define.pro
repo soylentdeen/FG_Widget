@@ -98,8 +98,10 @@ ENDIF
 ; EXTRACTION GOES HERE
 ;
 *self.extracted = drip_spextract(*self.undistorted,*self.header, self.gmode)
-*self.allwave = *self.extracted[*,0]
-*self.allflux = *self.extracted[*,1]
+;print,*self.extracted
+;print,(*self.extracted)[*,0]
+*self.allwave = (*self.extracted)[*,0]
+*self.allflux = (*self.extracted)[*,1]
 ;drip_spextract, *self.undistorted, *self.header
 
 
